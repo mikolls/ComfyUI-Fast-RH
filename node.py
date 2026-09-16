@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import secrets
 from typing import Any
 
 
@@ -76,6 +77,48 @@ class FastRHLoRA:
         return (result,)
 
 
-NODE_CLASS_MAPPINGS = {"FastRHLoRA": FastRHLoRA}
-NODE_DISPLAY_NAME_MAPPINGS = {"FastRHLoRA": "Fast-RH LoRA"}
+class FastRHRandomSeed:
+    """Build a RunningHub-compatible seed override, optionally chained."""
+
+    MAX_SEED = 0xFFFFFFFFFFFFFFFF
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "nodeId": ("INT", {"default": 0, "min": 0, "max": 999999, "step": 1}),
+                "mode": (["random", "custom"], {"default": "random"}),
+                "seed": ("INT", {"default": 0, "min": 0, "max": cls.MAX_SEED, "step": 1}),
+            },
+            "optional": {"previousNodeInfoList": ("ARRAY", {"default": []})},
+        }
+
+    RETURN_TYPES = ("ARRAY",)
+    RETURN_NAMES = ("nodeInfoList",)
+    FUNCTION = "build"
+    CATEGORY = "Fast-RH"
+    DESCRIPTION = "Create a random or custom seed override compatible with RH Node Info List."
+
+    @classmethod
+    def IS_CHANGED(cls, nodeId, mode, seed, previousNodeInfoList=None):
+        if mode == "random":
+            return float("nan")
+        return (nodeId, mode, seed, repr(previousNodeInfoList))
+
+    def build(self, nodeId: int, mode: str, seed: int, previousNodeInfoList=None):
+        if mode not in {"random", "custom"}:
+            raise ValueError(f"Unsupported seed mode: {mode}")
+        selected_seed = secrets.randbelow(self.MAX_SEED + 1) if mode == "random" else int(seed)
+        if not 0 <= selected_seed <= self.MAX_SEED:
+            raise ValueError(f"Seed must be between 0 and {self.MAX_SEED}")
+        node_info_list = list(previousNodeInfoList or [])
+        node_info_list.append({"nodeId": int(nodeId), "fieldName": "seed", "fieldValue": str(selected_seed)})
+        return (node_info_list,)
+
+
+NODE_CLASS_MAPPINGS = {"FastRHLoRA": FastRHLoRA, "FastRHRandomSeed": FastRHRandomSeed}
+NODE_DISPLAY_NAME_MAPPINGS = {
+    "FastRHLoRA": "Fast-RH LoRA",
+    "FastRHRandomSeed": "Fast-RH Random Seed",
+}
 

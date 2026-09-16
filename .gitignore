@@ -10,4 +10,4 @@ dist/
 *.egg-info/
 .idea/
 .vscode/
-
+deploy-local.ps1
