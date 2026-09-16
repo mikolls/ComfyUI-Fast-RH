@@ -73,9 +73,6 @@ python -m unittest discover -s tests -v
 
 ## Random Seed 节点
 
-填写远程工作流中需要改写 seed 的 `nodeId`，然后选择模式：
-
-- `random`：每次排队执行时生成新的 0–18446744073709551615 随机种子，并绕过 ComfyUI 执行缓存。
-- `custom`：使用 `seed` 输入框中的固定值，方便复现结果。
+填写远程工作流中需要改写 seed 的 `nodeId` 和 `seed`。seed 使用 ComfyUI 原生的执行后控制，可选择 `randomize` 在每次排队时随机，或选择 `fixed` 使用输入框中的固定值来复现结果。
 
 节点固定写入 `fieldName: "seed"`，输出与 RunningHub 的 **RH Node Info List** 相同的 `ARRAY` 格式，可以直接连接原先使用该节点输出的位置。可选输入 `previousNodeInfoList` 用于和其他参数继续串联。

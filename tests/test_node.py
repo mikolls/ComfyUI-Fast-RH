@@ -1,5 +1,4 @@
 import json
-import math
 import unittest
 
 from _bootstrap import load_plugin_package
@@ -33,21 +32,16 @@ class NodeTests(unittest.TestCase):
 
 
 class RandomSeedNodeTests(unittest.TestCase):
-    def test_custom_seed_matches_rh_node_info_list_format(self):
-        result = FastRHRandomSeed().build(4, "custom", 489861153661777)[0]
+    def test_seed_matches_rh_node_info_list_format(self):
+        result = FastRHRandomSeed().build(4, 489861153661777)[0]
         self.assertEqual(result, [{"nodeId": 4, "fieldName": "seed", "fieldValue": "489861153661777"}])
 
     def test_chains_without_mutating_previous_list(self):
         previous = [{"nodeId": 1, "fieldName": "text", "fieldValue": "hello"}]
-        result = FastRHRandomSeed().build(4, "custom", 123, previous)[0]
+        result = FastRHRandomSeed().build(4, 123, previous)[0]
         self.assertEqual(len(previous), 1)
         self.assertEqual(result[-1]["fieldValue"], "123")
 
-    def test_random_seed_is_in_supported_range(self):
-        result = FastRHRandomSeed().build(4, "random", 0)[0]
-        value = int(result[0]["fieldValue"])
-        self.assertGreaterEqual(value, 0)
-        self.assertLessEqual(value, FastRHRandomSeed.MAX_SEED)
-
-    def test_random_mode_bypasses_execution_cache(self):
-        self.assertTrue(math.isnan(FastRHRandomSeed.IS_CHANGED(4, "random", 0)))
+    def test_seed_uses_comfyui_control_after_generate(self):
+        seed_options = FastRHRandomSeed.INPUT_TYPES()["required"]["seed"][1]
+        self.assertTrue(seed_options["control_after_generate"])

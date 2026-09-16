@@ -72,4 +72,4 @@ python -m unittest discover -s tests -v
 
 ## Fast-RH Random Seed
 
-Set the target remote workflow `nodeId`, then select `random` to generate a fresh seed on every queued run or `custom` to use the value in the `seed` field. The node outputs the same `ARRAY` contract as RunningHub's **RH Node Info List**, fixes `fieldName` to `seed`, and supports chaining through the optional `previousNodeInfoList` input.
+Set the target remote workflow `nodeId` and `seed`. The seed uses ComfyUI's native control-after-generate menu: choose `randomize` for a new value on each queued run or `fixed` to reuse the entered value. The node outputs the same `ARRAY` contract as RunningHub's **RH Node Info List**, fixes `fieldName` to `seed`, and supports chaining through the optional `previousNodeInfoList` input.
