@@ -6,8 +6,8 @@ Fast-RH 是一套 ComfyUI 自定义节点，目标是让用户可以在本地更
 
 ## 功能
 
-- 通过 RunningHub 原生 ComfyUI `/object_info` 接口读取当前账号可用的 LoRA 名称。
-- 提供可搜索的模型选择弹窗和手动刷新功能。
+- 使用 RunningHub 网站模型接口，分为公共模型、我上传的、我的收藏。
+- 深色卡片弹窗展示封面、基础模型、文件名和收藏状态，支持搜索、分页、版本切换及点击选择。
 - 单个节点支持 1–16 条 LoRA 配置，默认显示 4 条。
 - 每条配置包含稳定的槽位名称、启用状态、模型强度和 CLIP 强度。
 - 输出有序的 `RH_LORA_CONFIG_LIST`，供后续 Fast-RH 工作流提交节点使用。
@@ -19,34 +19,21 @@ Fast-RH LoRA 目前只生成 LoRA 配置，不会自行提交或改写远程工�
 ## 安装
 
 1. 将本仓库放到 `ComfyUI/custom_nodes/ComfyUI-Fast-RH`，也可以通过 ComfyUI Manager 的 Git URL 安装功能安装。
-2. 将 `config.example.json` 复制为 `config.json`。
-3. 在 `config.json` 中填写 RunningHub 的 `base_url` 和 `api_key`，按需调整 `timeout_seconds`。
-4. 重启 ComfyUI。
-5. 在工作流中添加 **Fast-RH → Fast-RH LoRA** 或 **Fast-RH → Fast-RH Random Seed**。
+2. 重启 ComfyUI，并刷新浏览器页面。
+3. 添加 **Fast-RH → Fast-RH LoRA**，点击任意一行的 **选择模型**。
+4. 打开 **登录设置**，选择与网页登录一致的 `.ai` 或 `.cn` 站点。
+5. 在 RunningHub 网站登录后，从浏览器开发者工具的 Application / Cookies 中复制 `Rh-Accesstoken` 的值，粘贴并保存。也可以粘贴完整 Cookie 字符串或 `Bearer …`。
+6. 在公共模型、我上传的、我的收藏中搜索模型，选择版本后点击封面，文件名会自动填回节点。
 
-配置示例：
+## 登录与模型列表
 
-```json
-{
-  "base_url": "https://www.runninghub.cn",
-  "api_key": "你的-RunningHub-API-Key",
-  "timeout_seconds": 30
-}
-```
+网站模型列表使用登录令牌，不需要 OpenAPI 的 API Key。令牌保存在插件目录的 `session.json` 中（本地明文、已被 Git 忽略），不会返回前端或写入工作流。粘贴完整 Cookie 时仅提取 `Rh-Accesstoken`，不保存其他 Cookie。共享 ComfyUI 实例的访问者使用同一个模型账号；此方式面向可信的本地环境。
 
-插件同时支持 `https://www.runninghub.cn` 和 `https://www.runninghub.ai`。`config.json` 已被 Git 忽略，请勿将真实密钥提交到仓库。
+打开模型弹窗时会调用 `/api/instance/access/auth` 验证当前令牌是否仍被 RunningHub 接受，并读取 JWT `exp` 显示 `Rh-Accesstoken` 的实际到期时间。接口返回的 `expire_in` 是该接口新签发的临时 `accessKey` 到期时间，不是网页登录令牌的期限；插件不会保存或使用这个 `accessKey`。目前未接入刷新令牌接口，因此不保存或使用 `Rh-Refreshtoken`。令牌失效时，在网站重新登录并更新令牌；**清除登录**可删除本地保存的令牌。网站登录 Cookie 无法由本地 ComfyUI 页面直接跨域读取。
 
-## 模型缓存
+列表每次按需请求当前页（30 条）；搜索由 RunningHub 服务端执行，切换分类回到第一页。点击刷新重新获取当前页。只读取模型元数据和封面，不下载模型权重。多个版本分别保留文件名，选择时优先使用 `resourceStorageName`，移除 `models/loras/` 前缀但保留子目录。
 
-首次获取模型列表时，插件会下载完整的 RunningHub `/object_info` 响应，并以原子方式保存到 `cache/`。后续搜索和重启 ComfyUI 都直接读取本地 JSON；缓存不会自动过期，也不会在后台刷新。
-
-只有以下情况会再次访问 RunningHub：
-
-- 用户在模型选择弹窗中点击 **刷新 RunningHub**；
-- 缓存不存在或已经损坏；
-- 配置的站点或 API Key 发生变化。
-
-手动刷新失败不会覆盖最后一份有效缓存。缓存只保存 API Key 指纹，不会保存 API Key 本身。
+旧的 `/fast-rh/loras` 和 `/fast-rh/loras/refresh` 接口保留供兼容调用，仍使用 `config.json` 中的 `base_url`、`api_key`、`timeout_seconds` 和 `cache/`；新弹窗不再读取完整 `/object_info`。
 
 ## 输出约定
 

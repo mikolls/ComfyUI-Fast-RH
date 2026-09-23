@@ -11,3 +11,4 @@ dist/
 .idea/
 .vscode/
 deploy-local.ps1
+session.json

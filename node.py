@@ -32,7 +32,7 @@ class FastRHLoRA:
     RETURN_NAMES = ("lora_configs",)
     FUNCTION = "build"
     CATEGORY = "Fast-RH"
-    DESCRIPTION = "Select cached RunningHub LoRAs and build slot-based remote overrides."
+    DESCRIPTION = "Select RunningHub public, uploaded, or collected LoRAs and build slot-based remote overrides."
 
     def build(self, configs_json: str):
         try:

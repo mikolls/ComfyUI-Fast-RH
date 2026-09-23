@@ -6,8 +6,8 @@ Fast-RH is a ComfyUI custom-node suite designed to make RunningHub image-generat
 
 ## Features
 
-- Loads the LoRA names available to your RunningHub account through the native ComfyUI `/object_info` endpoint.
-- Provides a searchable model picker with manual refresh.
+- Browses RunningHub public, uploaded, and collected LoRAs through its website APIs.
+- Shows searchable, paginated model cards with covers, base models, real filenames, and a version selector.
 - Supports 1–16 LoRA entries in one node, with four entries by default.
 - Configures a stable slot name, enabled state, model strength, and CLIP strength for every entry.
 - Outputs an ordered `RH_LORA_CONFIG_LIST` for a future Fast-RH workflow submission node.
@@ -18,34 +18,20 @@ Fast-RH LoRA does not submit or rewrite remote workflows by itself yet.
 ## Installation
 
 1. Put this repository in `ComfyUI/custom_nodes/ComfyUI-Fast-RH`, or install it from its Git URL with ComfyUI Manager.
-2. Copy `config.example.json` to `config.json`.
-3. Set your RunningHub `base_url` and `api_key`. Adjust `timeout_seconds` if needed.
-4. Restart ComfyUI.
-5. Add **Fast-RH → Fast-RH LoRA** to your workflow.
+2. Restart ComfyUI and refresh the browser.
+3. Add **Fast-RH → Fast-RH LoRA** and click a model selector.
+4. Open **登录设置** (Login settings), choose the site matching your website login, and paste your `Rh-Accesstoken` from the browser's Application / Cookies panel. A Cookie string or Bearer value also works.
+5. Save, browse a category, select a version, and click its cover to fill the node's model filename.
 
-Example configuration:
+## Website login and catalog
 
-```json
-{
-  "base_url": "https://www.runninghub.cn",
-  "api_key": "your-runninghub-api-key",
-  "timeout_seconds": 30
-}
-```
+The new picker uses website authentication, independently of your OpenAPI key. It stores only the access token and site in local plaintext `session.json`, ignored by Git. Credentials are never returned to the frontend or serialized in workflows. A pasted Cookie string is reduced to its access token. All users of a shared ComfyUI server share this account; this is intended for a trusted local instance.
 
-Both `https://www.runninghub.cn` and `https://www.runninghub.ai` are supported. `config.json` is ignored by Git and must never be committed.
+Opening the picker calls `/api/instance/access/auth` to verify that RunningHub still accepts the token, then reads the JWT `exp` claim to display the actual `Rh-Accesstoken` expiration. The endpoint’s `expire_in` is the expiry of its newly issued temporary `accessKey`, not the website login token; the plugin neither stores nor uses that `accessKey`. Token renewal is not implemented because the refresh endpoint has not been verified. `Rh-Refreshtoken` is not stored or used. If login expires, sign in on the website again and update the access token. **清除登录** removes the local token. The local ComfyUI page cannot read the website's cookies across origins.
 
-## Model cache
+Each request loads one page of 30 models. Search runs on RunningHub; switching categories resets pagination. Refresh reloads the current page. The picker fetches metadata and covers, never model weights. Each version retains its own filename, preferring `resourceStorageName` and removing only the `models/loras/` prefix.
 
-The first model-list request downloads the complete RunningHub `/object_info` response and saves it atomically under `cache/`. Later searches and ComfyUI restarts always use that local JSON file—there is no automatic expiration or background refresh.
-
-RunningHub is contacted again only when:
-
-- you click **刷新 RunningHub** in the model picker;
-- the cache is missing or corrupt; or
-- the configured site or API key changes.
-
-If a manual refresh fails, the last valid cache remains available. Cache files contain only an API-key fingerprint, never the API key itself.
+Legacy `/fast-rh/loras` and `/fast-rh/loras/refresh` routes remain available using `config.json` (`base_url`, `api_key`, `timeout_seconds`) and `cache/`. The new picker no longer downloads full `/object_info`.
 
 ## Output contract
 
