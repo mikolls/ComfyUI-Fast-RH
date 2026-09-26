@@ -1,7 +1,7 @@
 [project]
 name = "comfyui-fast-rh"
 description = "Simpler ComfyUI nodes for controlling RunningHub workflows locally."
-version = "0.1.0"
+version = "0.1.1"
 license = "MIT"
 
 dependencies = ["aiohttp>=3.8"]

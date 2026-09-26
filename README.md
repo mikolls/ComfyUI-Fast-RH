@@ -57,7 +57,7 @@ Add **Fast-RH LoRA Stack** in ComfyUI.
    ![RunningHub access token](./img/3c12b9e2-ee36-4362-9356-3580dc999c9e.png)
 
 2. Choose a model category, search for a model, and select its version. Click the version's cover to fill its model filename into the current LoRA entry.
-3. In that entry, enter the ID of the corresponding LoRA loader node in the remote workflow. Set model and CLIP strength as needed, then enable the entry. You can add up to 16 entries; each enabled entry needs a corresponding remote node ID.
+3. In that entry, enter the ID of the corresponding LoRA loader node in the remote workflow. Set model strength and enable the entry. If the remote loader has a `strength_clip` input, turn on **Send CLIP strength** and set its value. Leave that switch off for loaders without this input. You can add up to 16 entries; each enabled entry needs a corresponding remote node ID.
 
    ![LoRA entry settings](./img/2b669a78-21a8-4de6-8aeb-57f63f5b1b79.png)
 

@@ -13,7 +13,7 @@ from fast_rh_test_package.node import FastRHLoRA, FastRHRandomSeed, FastRHKSampl
 class NodeTests(unittest.TestCase):
     def test_lora_outputs_official_node_info_list_and_chains(self):
         rows = [
-            {"slot": "face", "model": "face.safetensors", "nodeId": 12, "enabled": True, "strength_model": 0.8, "strength_clip": 0.7},
+            {"slot": "face", "model": "face.safetensors", "nodeId": 12, "enabled": True, "strength_model": 0.8, "strength_clip": 0.7, "include_strength_clip": True},
             {"slot": "style", "model": "", "enabled": False},
         ]
         previous = [{"nodeId": 3, "fieldName": "image", "fieldValue": "uploaded.png"}]
@@ -26,6 +26,14 @@ class NodeTests(unittest.TestCase):
         ])
         self.assertEqual(FastRHLoRA.RETURN_TYPES, ("ARRAY",))
         self.assertEqual(FastRHLoRA.INPUT_TYPES()["optional"]["previousNodeInfoList"][0], "ARRAY")
+
+    def test_lora_without_clip_input_omits_clip_override(self):
+        rows = [{"slot": "style", "model": "style.safetensors", "nodeId": 91, "enabled": True,
+                 "strength_model": 1.0, "strength_clip": 1.0}]
+        self.assertEqual(FastRHLoRA().build(json.dumps(rows))[0], [
+            {"nodeId": 91, "fieldName": "lora_name", "fieldValue": "style.safetensors"},
+            {"nodeId": 91, "fieldName": "strength_model", "fieldValue": "1.0"},
+        ])
 
     def test_enabled_lora_validation(self):
         cases = [

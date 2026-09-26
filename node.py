@@ -15,6 +15,7 @@ DEFAULT_ROWS = [
         "enabled": False,
         "strength_model": 1.0,
         "strength_clip": 1.0,
+        "include_strength_clip": False,
     }
     for index in range(1)
 ]
@@ -83,8 +84,9 @@ class FastRHLoRA:
             result.extend([
                 {"nodeId": node_id, "fieldName": "lora_name", "fieldValue": model},
                 {"nodeId": node_id, "fieldName": "strength_model", "fieldValue": str(strength_model)},
-                {"nodeId": node_id, "fieldName": "strength_clip", "fieldValue": str(strength_clip)},
             ])
+            if row.get("include_strength_clip", False):
+                result.append({"nodeId": node_id, "fieldName": "strength_clip", "fieldValue": str(strength_clip)})
         return (result,)
 
 

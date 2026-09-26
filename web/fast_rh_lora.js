@@ -3,7 +3,7 @@ import { chooseLora } from "./model_picker.js";
 
 const newRow = index => ({
   slot: `lora_${index + 1}`, model: "", model_cover: "", nodeId: 0,
-  enabled: false, strength_model: 1, strength_clip: 1,
+  enabled: false, strength_model: 1, strength_clip: 1, include_strength_clip: false,
 });
 const initialRows = () => [newRow(0)];
 const MAX_ROWS = 16;
@@ -161,9 +161,23 @@ app.registerExtension({
           head.append(img, name, preview, remove);
           const fields = document.createElement("div");
           fields.className = "fast-rh-stack-fields";
+          const clipStrength = numberField("CLIP strength", row.strength_clip ?? 1, "", v => { row.strength_clip = v; this._fastRhSync(); });
+          const clipToggle = document.createElement("label");
+          clipToggle.textContent = "Send CLIP strength";
+          const clipCheckbox = document.createElement("input");
+          clipCheckbox.type = "checkbox";
+          clipCheckbox.checked = !!row.include_strength_clip;
+          clipStrength.querySelector("input").disabled = !clipCheckbox.checked;
+          clipCheckbox.onchange = () => {
+            row.include_strength_clip = clipCheckbox.checked;
+            clipStrength.querySelector("input").disabled = !clipCheckbox.checked;
+            this._fastRhSync();
+          };
+          clipToggle.append(clipCheckbox);
           fields.append(
             numberField("Model strength", row.strength_model ?? 1, "", v => { row.strength_model = v; this._fastRhSync(); }),
-            numberField("CLIP strength", row.strength_clip ?? 1, "", v => { row.strength_clip = v; this._fastRhSync(); }),
+            clipStrength,
+            clipToggle,
             numberField("Remote node ID", row.nodeId ?? 0, "fast-rh-node-id", v => { row.nodeId = Math.trunc(v); this._fastRhSync(); }, "1"),
           );
           const enabled = document.createElement("input");

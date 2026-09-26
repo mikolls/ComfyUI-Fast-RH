@@ -58,7 +58,7 @@ API Key 由 ComfyUI 服务端从配置文件读取，不会保存在工作流中
 ![图片](./img/b3e7a312-e495-4520-8383-cb2203871682.png)
 ![图片](./img/3c12b9e2-ee36-4362-9356-3580dc999c9e.png)
 2. 在弹窗中选择模型分类、搜索模型，并选定版本。点击该版本的封面，会自动把模型文件名填入当前 LoRA 条目。
-3. 在同一条目中填写远程 LoRA 加载节点的 ID，按需设置模型强度和 CLIP 强度，并启用该条目。多个 LoRA 可分别添加条目，最多 16 个；每个启用的条目都需要对应的远程节点 ID。
+3. 在同一条目中填写远程 LoRA 加载节点的 ID，设置模型强度并启用该条目。如果远程加载节点有 `strength_clip` 输入，再打开 **Send CLIP strength** 并设置 CLIP 强度；没有该输入时保持关闭。多个 LoRA 可分别添加条目，最多 16 个；每个启用的条目都需要对应的远程节点 ID。
 ![图片](./img/2b669a78-21a8-4de6-8aeb-57f63f5b1b79.png)
 4. 将节点输出的 `nodeInfoList`（`ARRAY`）连接到 RunningHub 官方 **RH Execute Workflow** 的 `nodeInfoList` 输入。若已有其他参数节点，将它的 `ARRAY` 输出先连接到本节点的 `previousNodeInfoList`，再将本节点的输出接到执行节点。
 
