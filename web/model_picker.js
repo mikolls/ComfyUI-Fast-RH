@@ -8,7 +8,7 @@ async function jsonRequest(url, options) {
   const response = await api.fetchApi(url, options);
   let data;
   try { data = await response.json(); }
-  catch (_) { throw new Error(`本地服务返回了无效响应（HTTP ${response.status}）`); }
+  catch (_) { throw new Error(`The local server returned an invalid response (HTTP ${response.status})`); }
   if (!response.ok || !data.ok) throw new Error(data.error || `HTTP ${response.status}`);
   return data;
 }
@@ -42,13 +42,13 @@ function createPicker() {
   document.head.append(style);
   dialog = document.createElement("dialog");
   dialog.className = "fast-rh-catalog";
-  dialog.setAttribute("aria-label", "选择 RunningHub LoRA 模型");
+  dialog.setAttribute("aria-label", "Choose a RunningHub LoRA model");
   dialog.innerHTML = `
-    <header class="fast-rh-head"><nav aria-label="模型来源"><button data-source="public">公共模型</button><button data-source="uploaded">我上传的</button><button data-source="favorites">我的收藏</button></nav><span class="fast-rh-auth" data-auth role="status" aria-live="polite">检查登录…</span><button data-login>登录设置</button><button data-close aria-label="关闭">✕</button></header>
-    <section class="fast-rh-login" hidden><p>先在 RunningHub 网站登录，再从浏览器开发者工具的 Cookie 中复制 Rh-Accesstoken，粘贴到这里。也支持完整 Cookie 或 Bearer 值。登录只保存在本地服务端，不写入工作流。过期后重新导入即可。</p><div class="fast-rh-login-actions"><select data-site aria-label="RunningHub 站点"><option value="https://www.runninghub.ai">国际站 .ai</option><option value="https://www.runninghub.cn">国内站 .cn</option></select><input data-credential type="password" autocomplete="off" placeholder="粘贴 Rh-Accesstoken 或 Cookie" aria-label="登录令牌"><button data-save class="fast-rh-primary">保存登录</button><button data-clear>清除登录</button></div><div class="fast-rh-login-message" role="status"></div></section>
-    <form class="fast-rh-search"><input data-query placeholder="搜索模型" aria-label="搜索模型" maxlength="200"><button class="fast-rh-primary" type="submit">搜索</button><button data-refresh type="button">刷新列表</button><button data-cache-clear type="button">清理列表缓存</button></form>
+    <header class="fast-rh-head"><nav aria-label="Model source"><button data-source="public">Public Models</button><button data-source="uploaded">My Uploads</button><button data-source="favorites">Favorites</button></nav><span class="fast-rh-auth" data-auth role="status" aria-live="polite">Checking login…</span><button data-login>Login Settings</button><button data-close aria-label="Close">✕</button></header>
+    <section class="fast-rh-login" hidden><p>Sign in to the RunningHub website, then copy Rh-Accesstoken from your browser's developer tools under Cookies and paste it here. A full Cookie string or Bearer token also works. Login is stored only on this local server, never in the workflow. Import a new token when it expires.</p><div class="fast-rh-login-actions"><select data-site aria-label="RunningHub site"><option value="https://www.runninghub.ai">Global site .ai</option><option value="https://www.runninghub.cn">China site .cn</option></select><input data-credential type="password" autocomplete="off" placeholder="Paste Rh-Accesstoken or Cookie" aria-label="Login token"><button data-save class="fast-rh-primary">Save Login</button><button data-clear>Clear Login</button></div><div class="fast-rh-login-message" role="status"></div></section>
+    <form class="fast-rh-search"><input data-query placeholder="Search models" aria-label="Search models" maxlength="200"><button class="fast-rh-primary" type="submit">Search</button><button data-refresh type="button">Refresh List</button><button data-cache-clear type="button">Clear List Cache</button></form>
     <div class="fast-rh-status" role="status" aria-live="polite"></div><div class="fast-rh-grid"></div>
-    <footer class="fast-rh-footer"><small>点击封面选择 · 缓存 24 小时 · 自定义封面保存在本地</small><button data-prev>上一页</button><span data-page></span><button data-next>下一页</button></footer>`;
+    <footer class="fast-rh-footer"><small>Click a cover to select · Cached for 24 hours · Custom covers are stored locally</small><button data-prev>Previous</button><span data-page></span><button data-next>Next</button></footer>`;
   document.body.append(dialog);
   $('[data-close]').onclick = () => close();
   dialog.addEventListener("cancel", event => { event.preventDefault(); close(); });
@@ -67,14 +67,14 @@ function createPicker() {
 async function clearCache() {
   const button = $('[data-cache-clear]');
   button.disabled = true;
-  $('.fast-rh-status').textContent = '正在清理模型列表缓存…';
+  $('.fast-rh-status').textContent = 'Clearing model list cache…';
   try {
     const data = await jsonRequest('/fast-rh/resources/cache/clear', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}',
     });
-    $('.fast-rh-status').textContent = `已清理 ${data.removed} 页列表缓存；当前模型列表保留显示，重新打开时会重新加载`;
+    $('.fast-rh-status').textContent = `Cleared ${data.removed} cached pages. The current list stays visible and will reload when reopened`;
   } catch (error) {
-    $('.fast-rh-status').textContent = `清理缓存失败：${error.message}`;
+    $('.fast-rh-status').textContent = `Failed to clear cache: ${error.message}`;
   } finally { button.disabled = false; }
 }
 
@@ -87,7 +87,7 @@ async function changeSession(clear) {
   try {
     await jsonRequest('/fast-rh/session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(clear ? { clear: true } : { site: $('[data-site]').value, credential: $('[data-credential]').value }) });
     $('[data-credential]').value = '';
-    message.textContent = clear ? '已清除本地登录信息' : '已保存，正在检查登录状态…';
+    message.textContent = clear ? 'Local login removed' : 'Saved. Checking login status…';
     await refreshAuthStatus();
     await load(1);
   } catch (error) { message.textContent = error.message; }
@@ -97,23 +97,23 @@ async function changeSession(clear) {
 function renderCard(item) {
   const card = document.createElement('article');
   card.className = 'fast-rh-card';
-  card.innerHTML = `<button class="fast-rh-pick"><img loading="lazy" referrerpolicy="no-referrer" alt=""><div class="fast-rh-card-labels"><span>LORA</span><span data-base></span></div><div class="fast-rh-card-info"><strong class="fast-rh-card-title"></strong><span class="fast-rh-card-name"></span></div></button><div class="fast-rh-card-bottom"><select aria-label="模型版本"></select><span class="fast-rh-collected"></span></div><div class="fast-rh-card-tools"><button type="button" data-cover>设置封面</button><button type="button" data-cover-reset>恢复远程封面</button></div><input data-cover-file type="file" accept="image/png,image/jpeg,image/webp" hidden>`;
+  card.innerHTML = `<button class="fast-rh-pick"><img loading="lazy" referrerpolicy="no-referrer" alt=""><div class="fast-rh-card-labels"><span>LORA</span><span data-base></span></div><div class="fast-rh-card-info"><strong class="fast-rh-card-title"></strong><span class="fast-rh-card-name"></span></div></button><div class="fast-rh-card-bottom"><select aria-label="Model version"></select><span class="fast-rh-collected"></span></div><div class="fast-rh-card-tools"><button type="button" data-cover>Set Cover</button><button type="button" data-cover-reset>Restore Remote Cover</button></div><input data-cover-file type="file" accept="image/png,image/jpeg,image/webp" hidden>`;
   const pick = card.querySelector('.fast-rh-pick'), select = card.querySelector('select'), img = card.querySelector('img');
   const fileInput = card.querySelector('[data-cover-file]');
   card.querySelector('.fast-rh-card-title').textContent = item.title;
-  card.querySelector('.fast-rh-collected').textContent = item.collected ? '★ 已收藏' : '';
+  card.querySelector('.fast-rh-collected').textContent = item.collected ? '★ Favorited' : '';
   item.versions.forEach((v, i) => { const option = document.createElement('option'); option.value = i; option.textContent = v.version; select.append(option); });
   const update = () => {
     const v = item.versions[Number(select.value)];
-    const name = v?.model || '暂无可用版本';
+    const name = v?.model || 'No versions available';
     card.querySelector('.fast-rh-card-name').textContent = name;
     card.querySelector('[data-base]').textContent = v?.base_model || '—';
     pick.title = `${item.title}\n${name}`;
-    pick.setAttribute('aria-label', `选择 ${item.title} ${v?.version || ''}`);
+    pick.setAttribute('aria-label', `Select ${item.title} ${v?.version || ''}`);
     pick.disabled = !v;
     const image = v?.local_cover || v?.image || item.image;
     img.dataset.custom = v?.local_cover ? 'true' : 'false';
-    img.alt = v?.local_cover ? '本地自定义封面' : `${item.title} 远程封面`;
+    img.alt = v?.local_cover ? 'Local custom cover' : `${item.title} remote cover`;
     img.hidden = !image;
     if (image) img.src = v?.local_cover ? `${v.local_cover}?v=${Date.now()}` : image;
     else img.removeAttribute('src');
@@ -136,7 +136,7 @@ function renderCard(item) {
     const v = item.versions[Number(select.value)];
     if (!file || !v) return;
     if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 12 * 1024 * 1024) {
-      $('.fast-rh-status').textContent = '请选择 12 MB 以内的 PNG、JPG 或 WebP 图片';
+      $('.fast-rh-status').textContent = 'Choose a PNG, JPG, or WebP image under 12 MB';
       fileInput.value = '';
       return;
     }
@@ -147,10 +147,10 @@ function renderCard(item) {
     button.disabled = true;
     try {
       const result = await jsonRequest('/fast-rh/covers', { method: 'POST', body: form });
-      $('.fast-rh-status').textContent = `已为 ${v.model} 设置本地封面`;
+      $('.fast-rh-status').textContent = `Set a local cover for ${v.model}`;
       v.local_cover = result.url;
       update();
-    } catch (error) { $('.fast-rh-status').textContent = `封面保存失败：${error.message}`; }
+    } catch (error) { $('.fast-rh-status').textContent = `Failed to save cover: ${error.message}`; }
     finally { button.disabled = false; fileInput.value = ''; }
   };
   card.querySelector('[data-cover-reset]').onclick = async event => {
@@ -161,9 +161,9 @@ function renderCard(item) {
       await jsonRequest(`/fast-rh/covers?${params}`, { method: 'DELETE' });
       v.local_cover = '';
       update();
-      $('.fast-rh-status').textContent = '已恢复 RunningHub 远程封面';
+      $('.fast-rh-status').textContent = 'Restored the RunningHub remote cover';
     } catch (error) {
-      $('.fast-rh-status').textContent = `恢复远程封面失败：${error.message}`;
+      $('.fast-rh-status').textContent = `Failed to restore remote cover: ${error.message}`;
       event.currentTarget.disabled = false;
     }
   };
@@ -178,8 +178,8 @@ async function load(nextPage = 1, refresh = false) {
   page = Math.max(1, nextPage);
   dialog.querySelectorAll('[data-source]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.source === source)));
   $('[data-prev]').disabled = $('[data-next]').disabled = true;
-  $('[data-page]').textContent = `第 ${page} 页`;
-  $('.fast-rh-status').textContent = '正在加载 RunningHub 模型…';
+  $('[data-page]').textContent = `Page ${page}`;
+  $('.fast-rh-status').textContent = 'Loading RunningHub models…';
   $('.fast-rh-grid').replaceChildren();
   try {
     const params = new URLSearchParams({ source, page: String(page), q: $('[data-query]').value.trim() });
@@ -190,12 +190,12 @@ async function load(nextPage = 1, refresh = false) {
     $('.fast-rh-grid').replaceChildren(...data.items.map(renderCard));
     $('.fast-rh-grid').scrollTop = 0;
     $('.fast-rh-status').textContent = data.items.length
-      ? `共 ${data.total.toLocaleString()} 个模型 · 本页 ${data.items.length} 个 · ${data.source === 'cache' ? '本地缓存' : '已更新'}`
-      : '没有匹配的模型，试试其他关键词或分类';
+      ? `${data.total.toLocaleString()} models · ${data.items.length} on this page · ${data.source === 'cache' ? 'Local cache' : 'Updated'}`
+      : 'No matching models. Try another keyword or category.';
   } catch (error) {
     if (id !== requestId || error.name === 'AbortError') return;
     hasNext = false;
-    $('.fast-rh-status').textContent = `加载失败：${error.message}`;
+    $('.fast-rh-status').textContent = `Failed to load: ${error.message}`;
   } finally {
     if (id === requestId) { $('[data-prev]').disabled = page <= 1; $('[data-next]').disabled = !hasNext; }
   }
@@ -219,7 +219,7 @@ export function chooseLora() {
 
 async function refreshAuthStatus() {
   const badge = $('[data-auth]');
-  badge.textContent = '检查登录…';
+  badge.textContent = 'Checking login…';
   badge.removeAttribute('data-valid');
   try {
     const data = await jsonRequest('/fast-rh/session');
@@ -227,17 +227,17 @@ async function refreshAuthStatus() {
     if (data.site) $('[data-site]').value = data.site;
     if (data.authenticated && Number.isFinite(Number(data.token_expires_at))) {
       const expiration = new Date(Number(data.token_expires_at));
-      badge.textContent = `令牌有效至 ${expiration.toLocaleString()}`;
+      badge.textContent = `Token valid until ${expiration.toLocaleString()}`;
       badge.dataset.valid = 'true';
       return data;
     }
-    badge.textContent = data.configured ? '登录已过期' : '尚未登录';
+    badge.textContent = data.configured ? 'Login expired' : 'Not signed in';
     badge.dataset.valid = 'false';
     if (data.error) $('.fast-rh-login-message').textContent = data.error;
     return data;
   } catch (error) {
     if (dialog.open) {
-      badge.textContent = '登录检查失败';
+      badge.textContent = 'Login check failed';
       badge.dataset.valid = 'false';
       $('.fast-rh-login-message').textContent = error.message;
     }

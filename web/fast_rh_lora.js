@@ -56,7 +56,7 @@ function previewImage(url, name) {
   const close = document.createElement("button");
   close.type = "button";
   close.textContent = "×";
-  close.setAttribute("aria-label", "关闭图片预览");
+  close.setAttribute("aria-label", "Close image preview");
   close.onclick = () => dialog.close();
   dialog.append(img, close);
   dialog.addEventListener("close", () => dialog.remove());
@@ -101,7 +101,7 @@ app.registerExtension({
       toolbar.className = "fast-rh-stack-toolbar";
       const add = document.createElement("button");
       add.type = "button";
-      add.title = "添加 LoRA";
+      add.title = "Add LoRA";
       add.textContent = "+";
       toolbar.append(add);
       const list = document.createElement("div");
@@ -120,14 +120,14 @@ app.registerExtension({
           head.className = "fast-rh-stack-head";
           const img = document.createElement("img");
           img.className = "fast-rh-stack-thumb";
-          img.alt = row.model ? `${row.model} 封面` : "尚未选择模型";
+          img.alt = row.model ? `${row.model} cover` : "No model selected";
           if (row.model_cover) img.src = row.model_cover;
-          img.onerror = () => { img.removeAttribute("src"); img.alt = "封面不可用"; };
+          img.onerror = () => { img.removeAttribute("src"); img.alt = "Cover unavailable"; };
           const name = document.createElement("button");
           name.className = "fast-rh-stack-name";
           name.type = "button";
-          name.textContent = row.model || "点击选择 LoRA 模型…";
-          name.title = row.model || "选择模型";
+          name.textContent = row.model || "Click to choose a LoRA model…";
+          name.title = row.model || "Choose model";
           name.onclick = async () => {
             const selected = await chooseLora();
             if (selected) {
@@ -142,7 +142,7 @@ app.registerExtension({
           preview.className = "fast-rh-stack-icon";
           preview.type = "button";
           preview.textContent = "▣";
-          preview.title = "放大预览封面";
+          preview.title = "Enlarge cover preview";
           preview.disabled = !row.model_cover;
           preview.onclick = () => previewImage(row.model_cover, row.model);
           img.onclick = () => previewImage(row.model_cover, row.model);
@@ -151,7 +151,7 @@ app.registerExtension({
           remove.className = "fast-rh-stack-icon";
           remove.type = "button";
           remove.textContent = "×";
-          remove.title = "删除这一行";
+          remove.title = "Remove this row";
           remove.onclick = () => {
             this._fastRhState.splice(index, 1);
             if (!this._fastRhState.length) this._fastRhState.push(newRow(0));
@@ -162,14 +162,14 @@ app.registerExtension({
           const fields = document.createElement("div");
           fields.className = "fast-rh-stack-fields";
           fields.append(
-            numberField("模型权重", row.strength_model ?? 1, "", v => { row.strength_model = v; this._fastRhSync(); }),
-            numberField("文本编码器权重", row.strength_clip ?? 1, "", v => { row.strength_clip = v; this._fastRhSync(); }),
-            numberField("远程节点 ID", row.nodeId ?? 0, "fast-rh-node-id", v => { row.nodeId = Math.trunc(v); this._fastRhSync(); }, "1"),
+            numberField("Model strength", row.strength_model ?? 1, "", v => { row.strength_model = v; this._fastRhSync(); }),
+            numberField("CLIP strength", row.strength_clip ?? 1, "", v => { row.strength_clip = v; this._fastRhSync(); }),
+            numberField("Remote node ID", row.nodeId ?? 0, "fast-rh-node-id", v => { row.nodeId = Math.trunc(v); this._fastRhSync(); }, "1"),
           );
           const enabled = document.createElement("input");
           enabled.type = "checkbox";
           enabled.className = "fast-rh-stack-toggle";
-          enabled.title = "启用";
+          enabled.title = "Enabled";
           enabled.checked = !!row.enabled;
           enabled.onchange = () => { row.enabled = enabled.checked; this._fastRhSync(); };
           fields.append(enabled);

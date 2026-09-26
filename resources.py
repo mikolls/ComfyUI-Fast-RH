@@ -28,14 +28,14 @@ class ResourceError(RuntimeError):
 
 def save_session(site: str, credential: str, path: Path = SESSION_PATH) -> None:
     if site not in SITES:
-        raise ResourceError("请选择 RunningHub .ai 或 .cn 站点")
+        raise ResourceError("Choose the RunningHub .ai or .cn site")
     token = credential.strip()
     if "Rh-Accesstoken=" in token:
         token = token.split("Rh-Accesstoken=", 1)[1].split(";", 1)[0].strip()
     elif token.lower().startswith("bearer "):
         token = token[7:].strip()
     if len(token) > 16384 or not re.fullmatch(r"[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+", token):
-        raise ResourceError("请粘贴 Rh-Accesstoken 的值、Bearer token 或 Cookie 字符串")
+        raise ResourceError("Paste a Rh-Accesstoken value, Bearer token, or Cookie string")
     fd, name = tempfile.mkstemp(dir=path.parent, suffix=".tmp")
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as handle:
@@ -52,11 +52,11 @@ def load_session(path: Path = SESSION_PATH) -> dict:
             raise ValueError()
         return value
     except (OSError, ValueError, AttributeError):
-        raise ResourceError("请先点击「登录设置」导入 RunningHub 网站登录信息") from None
+        raise ResourceError("Open Login Settings and import your RunningHub website login first") from None
 
 def build_query(source: str, page: int, query: str) -> tuple[str, dict]:
     if source not in {"public", "uploaded", "favorites"} or not 1 <= page <= 100000:
-        raise ResourceError("模型来源或页码无效")
+        raise ResourceError("Invalid model source or page number")
     body = dict(size=30, current=page, resourceType="LORA", resourceName=query[:200],
                 tags=None, baseModels=[], point="")
     if source == "favorites":
@@ -80,11 +80,11 @@ def normalize_record(record: dict) -> dict:
         posters = version.get("posterInfos") or []
         poster = posters[0] if posters else {}
         versions.append(dict(id=str(version.get("id", "")), model=name,
-                             version=version.get("version") or "默认版本",
+                             version=version.get("version") or "Default version",
                              base_model=version.get("baseModel") or "",
                              image=_image(poster.get("thumbnailUrl") or poster.get("posterUrl"))))
     return dict(id=str(record.get("id", "")), title=record.get("resourceName") or
-                (versions[0]["model"] if versions else "未命名模型"),
+                (versions[0]["model"] if versions else "Unnamed model"),
                 image=_image(record.get("thumbnailUrl") or record.get("posterUrl")),
                 collected=record.get("collect") is True, versions=versions)
 
@@ -97,9 +97,9 @@ def check_session(path: Path = SESSION_PATH) -> dict:
         claims = json.loads(base64.urlsafe_b64decode(encoded_payload + padding))
         token_exp = int(claims["exp"])
     except (IndexError, KeyError, TypeError, ValueError, json.JSONDecodeError):
-        raise ResourceError("无法读取 Rh-Accesstoken 的过期时间，请重新导入") from None
+        raise ResourceError("Cannot read the Rh-Accesstoken expiration. Import it again") from None
     if token_exp <= int(time.time()):
-        raise ResourceError("Rh-Accesstoken 已过期，请在「登录设置」更新令牌")
+        raise ResourceError("Rh-Accesstoken has expired. Update it in Login Settings")
     request = Request(session["site"] + "/api/instance/access/auth", data=b"{}", headers={
         "Authorization": "Bearer " + session["access_token"], "client": "WEB",
         "Content-Type": "application/json", "Accept": "application/json",
@@ -111,20 +111,20 @@ def check_session(path: Path = SESSION_PATH) -> dict:
             payload = json.load(response)
     except HTTPError as exc:
         if exc.code in {401, 403}:
-            raise ResourceError("RunningHub 登录已过期，请在「登录设置」更新 Rh-Accesstoken") from None
-        raise ResourceError(f"RunningHub 登录检查返回 HTTP {exc.code}") from None
+            raise ResourceError("RunningHub login has expired. Update Rh-Accesstoken in Login Settings") from None
+        raise ResourceError(f"RunningHub login check returned HTTP {exc.code}") from None
     except (URLError, OSError, ValueError):
-        raise ResourceError("无法检查 RunningHub 登录状态，请检查网络后重试") from None
+        raise ResourceError("Cannot check RunningHub login status. Check your network and retry") from None
     data = payload.get("data") if isinstance(payload, dict) else None
     if not isinstance(payload, dict) or payload.get("code") not in (0, "0") or not isinstance(data, dict):
         message = payload.get("msg") if isinstance(payload, dict) else None
-        raise ResourceError("RunningHub 登录已过期，请更新 Rh-Accesstoken" + (f"（{message[:100]}）" if isinstance(message, str) and message else ""))
+        raise ResourceError("RunningHub login has expired. Update Rh-Accesstoken" + (f" ({message[:100]})" if isinstance(message, str) and message else ""))
     try:
         expires_at = int(data["expire_in"])
     except (KeyError, TypeError, ValueError):
-        raise ResourceError("RunningHub 登录检查未返回有效的过期时间") from None
+        raise ResourceError("RunningHub login check returned no valid expiration") from None
     if expires_at <= int(__import__("time").time() * 1000):
-        raise ResourceError("RunningHub 登录签名已过期，请更新 Rh-Accesstoken")
+        raise ResourceError("RunningHub login signature has expired. Update Rh-Accesstoken")
     return {"site": session["site"], "token_expires_at": token_exp * 1000,
             "access_key_expires_at": expires_at}
 
@@ -143,15 +143,15 @@ def fetch_resources(source: str, page: int, query: str) -> dict:
             payload = json.load(response)
     except HTTPError as exc:
         if exc.code in {401, 403}:
-            raise ResourceError("登录已失效或无访问权限，请在登录设置中更新 Rh-Accesstoken") from None
-        raise ResourceError(f"RunningHub 返回 HTTP {exc.code}") from None
+            raise ResourceError("Login has expired or access was denied. Update Rh-Accesstoken in Login Settings") from None
+        raise ResourceError(f"RunningHub returned HTTP {exc.code}") from None
     except (URLError, OSError, ValueError):
-        raise ResourceError("无法读取 RunningHub 模型列表，请稍后重试") from None
+        raise ResourceError("Cannot load the RunningHub model list. Retry later") from None
     if not isinstance(payload, dict) or payload.get("code") not in (0, "0"):
-        raise ResourceError("RunningHub 拒绝了请求，请检查登录是否过期以及站点是否匹配")
+        raise ResourceError("RunningHub rejected the request. Check your login and selected site")
     data = payload.get("data")
     if not isinstance(data, dict) or not isinstance(data.get("records"), list):
-        raise ResourceError("RunningHub 列表格式发生变化，未找到模型记录")
+        raise ResourceError("RunningHub list format changed; no model records found")
     return dict(items=[normalize_record(r) for r in data["records"]], page=page,
                 total=int(data.get("total") or 0), has_next=data.get("hasNext") is True)
 
@@ -162,7 +162,7 @@ def model_key(model: str) -> str:
 
 def _cover_path(key: str) -> Path | None:
     if not re.fullmatch(r"[a-f0-9]{64}", key):
-        raise ResourceError("LoRA 文件标识无效")
+        raise ResourceError("Invalid LoRA file identifier")
     for extension in ("png", "jpg", "webp"):
         path = COVERS_DIR / f"{key}.{extension}"
         if path.is_file():
@@ -227,9 +227,9 @@ def clear_resource_cache() -> int:
 
 def save_model_cover(key: str, content_type: str, data: bytes) -> str:
     if not re.fullmatch(r"[a-f0-9]{64}", key):
-        raise ResourceError("LoRA 文件标识无效")
+        raise ResourceError("Invalid LoRA file identifier")
     if not data or len(data) > MAX_COVER_BYTES:
-        raise ResourceError("封面不能为空，且不能超过 12 MB")
+        raise ResourceError("Cover must be nonempty and no larger than 12 MB")
     signatures = {
         "image/png": ("png", lambda b: b.startswith(b"\x89PNG\r\n\x1a\n")),
         "image/jpeg": ("jpg", lambda b: b.startswith(b"\xff\xd8\xff")),
@@ -237,7 +237,7 @@ def save_model_cover(key: str, content_type: str, data: bytes) -> str:
     }
     specification = signatures.get(content_type.lower())
     if not specification or not specification[1](data):
-        raise ResourceError("封面只支持 PNG、JPG 或 WebP 图片")
+        raise ResourceError("Cover must be a PNG, JPG, or WebP image")
     COVERS_DIR.mkdir(parents=True, exist_ok=True)
     extension = specification[0]
     for old_extension in ("png", "jpg", "webp"):

@@ -47,7 +47,7 @@ async def get_resources(request: web.Request) -> web.Response:
     except (ResourceError, ValueError) as exc:
         return web.json_response({"ok": False, "error": str(exc)}, status=502)
     except Exception:
-        return web.json_response({"ok": False, "error": "模型列表读取失败"}, status=500)
+        return web.json_response({"ok": False, "error": "Failed to load model list"}, status=500)
 
 @PromptServer.instance.routes.get("/fast-rh/session")
 async def session_status(_request: web.Request) -> web.Response:
@@ -57,15 +57,15 @@ async def session_status(_request: web.Request) -> web.Response:
     except ResourceError as exc:
         configured = SESSION_PATH.exists()
         return web.json_response({"ok": True, "configured": configured, "authenticated": False,
-                                  "error": str(exc) if configured else "请登录 RunningHub 并设置访问令牌"})
+                                  "error": str(exc) if configured else "Sign in to RunningHub and set an access token"})
 
 @PromptServer.instance.routes.post("/fast-rh/session")
 async def update_session(request: web.Request) -> web.Response:
     if request.content_type != "application/json":
-        return web.json_response({"ok": False, "error": "需要 JSON 请求"}, status=415)
+        return web.json_response({"ok": False, "error": "JSON request required"}, status=415)
     origin = request.headers.get("Origin")
     if origin and origin != f"{request.scheme}://{request.host}":
-        return web.json_response({"ok": False, "error": "不允许跨站修改登录"}, status=403)
+        return web.json_response({"ok": False, "error": "Cross-site login changes are not allowed"}, status=403)
     try:
         body = await request.json()
         if body.get("clear") is True:
@@ -76,16 +76,16 @@ async def update_session(request: web.Request) -> web.Response:
     except (ResourceError, ValueError, AttributeError) as exc:
         return web.json_response({"ok": False, "error": str(exc)}, status=400)
     except OSError:
-        return web.json_response({"ok": False, "error": "无法保存本地登录设置"}, status=500)
+        return web.json_response({"ok": False, "error": "Failed to save local login settings"}, status=500)
 
 
 @PromptServer.instance.routes.post("/fast-rh/resources/cache/clear")
 async def clear_resource_cache_route(request: web.Request) -> web.Response:
     if request.content_type != "application/json":
-        return web.json_response({"ok": False, "error": "需要 JSON 请求"}, status=415)
+        return web.json_response({"ok": False, "error": "JSON request required"}, status=415)
     origin = request.headers.get("Origin")
     if origin and origin != f"{request.scheme}://{request.host}":
-        return web.json_response({"ok": False, "error": "不允许跨站清理缓存"}, status=403)
+        return web.json_response({"ok": False, "error": "Cross-site cache clearing is not allowed"}, status=403)
     removed = await asyncio.to_thread(clear_resource_cache)
     return web.json_response({"ok": True, "removed": removed})
 
@@ -98,21 +98,21 @@ def _cover_origin_allowed(request: web.Request) -> bool:
 @PromptServer.instance.routes.post("/fast-rh/covers")
 async def upload_model_cover(request: web.Request) -> web.Response:
     if not _cover_origin_allowed(request):
-        return web.json_response({"ok": False, "error": "不允许跨站修改封面"}, status=403)
+        return web.json_response({"ok": False, "error": "Cross-site cover changes are not allowed"}, status=403)
     if request.content_type != "multipart/form-data":
-        return web.json_response({"ok": False, "error": "需要上传图片文件"}, status=415)
+        return web.json_response({"ok": False, "error": "Image file upload required"}, status=415)
     try:
         reader = await request.multipart()
         model_field = await reader.next()
         if model_field is None or model_field.name != "model":
-            raise ResourceError("没有指定 LoRA 模型")
+            raise ResourceError("No LoRA model specified")
         model = (await model_field.text()).strip()
         if not model or len(model) > 1024:
-            raise ResourceError("LoRA 文件名无效")
+            raise ResourceError("Invalid LoRA filename")
         field = await reader.next()
         content_type = field.headers.get("Content-Type", "") if field is not None else ""
         if field is None or field.name != "image" or not content_type:
-            raise ResourceError("没有选择封面图片")
+            raise ResourceError("No cover image selected")
         data = await field.read_chunk(size=65536)
         chunks = [data]
         size = len(data)
@@ -122,7 +122,7 @@ async def upload_model_cover(request: web.Request) -> web.Response:
                 break
             size += len(data)
             if size > MAX_COVER_BYTES:
-                raise ResourceError("封面不能超过 12 MB")
+                raise ResourceError("Cover cannot exceed 12 MB")
             chunks.append(data)
         key = model_key(model)
         filename = await asyncio.to_thread(save_model_cover, key, content_type, b"".join(chunks))
@@ -130,7 +130,7 @@ async def upload_model_cover(request: web.Request) -> web.Response:
     except ResourceError as exc:
         return web.json_response({"ok": False, "error": str(exc)}, status=400)
     except (ValueError, AssertionError):
-        return web.json_response({"ok": False, "error": "封面文件无效"}, status=400)
+        return web.json_response({"ok": False, "error": "Invalid cover file"}, status=400)
 
 
 @PromptServer.instance.routes.get("/fast-rh/covers/{key}")
@@ -148,11 +148,11 @@ async def get_model_cover(request: web.Request) -> web.StreamResponse:
 @PromptServer.instance.routes.delete("/fast-rh/covers")
 async def remove_model_cover(request: web.Request) -> web.Response:
     if not _cover_origin_allowed(request):
-        return web.json_response({"ok": False, "error": "不允许跨站修改封面"}, status=403)
+        return web.json_response({"ok": False, "error": "Cross-site cover changes are not allowed"}, status=403)
     try:
         model = request.query.get("model", "")
         if not model or len(model) > 1024:
-            raise ResourceError("LoRA 文件名无效")
+            raise ResourceError("Invalid LoRA filename")
         removed = await asyncio.to_thread(delete_model_cover, model_key(model))
         return web.json_response({"ok": True, "removed": removed})
     except ResourceError as exc:

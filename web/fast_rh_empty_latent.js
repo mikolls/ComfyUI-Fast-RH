@@ -51,9 +51,9 @@ app.registerExtension({
       };
 
       const mode = this.addWidget(
-        "combo", "resolution_mode", "自定义", value => {
-          mode.value = value;
-          if (value === "预设") {
+        "combo", "resolution_mode", "Custom", value => {
+          mode.value = value === "\u9884\u8bbe" ? "Preset" : value === "\u81ea\u5b9a\u4e49" ? "Custom" : value;
+          if (mode.value === "Preset") {
             state().customWidth = Number(width.value);
             state().customHeight = Number(height.value);
             applyPreset();
@@ -63,12 +63,12 @@ app.registerExtension({
           }
           updateVisibility();
         },
-        { values: ["预设", "自定义"] },
+        { values: ["Preset", "Custom"] },
       );
       const preset = this.addWidget(
         "combo", "resolution_preset", "1024 × 1920", value => {
           preset.value = value;
-          if (mode.value === "预设") applyPreset();
+          if (mode.value === "Preset") applyPreset();
           app.graph.setDirtyCanvas(true, true);
         },
         { values: PRESETS },
@@ -80,7 +80,7 @@ app.registerExtension({
         [width.value, height.value] = pair;
       };
       const updateVisibility = () => {
-        const isPreset = mode.value === "预设";
+        const isPreset = mode.value === "Preset";
         setVisible(preset, isPreset);
         setVisible(width, !isPreset);
         setVisible(height, !isPreset);
@@ -89,8 +89,8 @@ app.registerExtension({
         app.graph.setDirtyCanvas(true, true);
       };
 
-      const swap = this.addWidget("button", "交换宽高 ↔", null, () => {
-        if (mode.value === "预设") {
+      const swap = this.addWidget("button", "Swap Width / Height ↔", null, () => {
+        if (mode.value === "Preset") {
           const pair = dimensions(preset.value);
           if (!pair) return;
           const reversed = `${pair[1]} × ${pair[0]}`;
@@ -109,8 +109,10 @@ app.registerExtension({
       state();
       updateVisibility();
       this._fastRhEmptyLatentRefresh = () => {
+        if (mode.value === "\u9884\u8bbe") mode.value = "Preset";
+        else if (mode.value === "\u81ea\u5b9a\u4e49") mode.value = "Custom";
         state();
-        if (mode.value === "预设") applyPreset();
+        if (mode.value === "Preset") applyPreset();
         updateVisibility();
       };
     };

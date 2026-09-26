@@ -59,7 +59,7 @@ class ResourceTests(unittest.TestCase):
     @patch.object(r, 'load_session', return_value={'site': 'https://www.runninghub.ai', 'access_token': 'abc.def.ghi'})
     def test_expired_and_invalid_responses(self, _session):
         with patch.object(r, 'urlopen', side_effect=HTTPError('url', 401, 'secret', {}, None)):
-            with self.assertRaisesRegex(r.ResourceError, '登录已失效'):
+            with self.assertRaisesRegex(r.ResourceError, 'Login has expired'):
                 r.list_resources('public', 1, '')
         for payload in [{'code': 401, 'msg': 'secret'}, {'code': 0, 'data': None}]:
             with patch.object(r, 'urlopen', return_value=io.BytesIO(json.dumps(payload).encode())):

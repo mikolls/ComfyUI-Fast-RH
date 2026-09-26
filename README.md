@@ -2,7 +2,7 @@
 
 [简体中文](README_CN.md) | English
 
-Fast-RH is a ComfyUI custom-node suite designed to make RunningHub image-generation workflows easier to control locally. It currently includes **Fast-RH LoRA**, **Fast-RH Random Seed**, **Fast KSampler**, and **Fast Empty Latent Image**.
+Fast-RH is a ComfyUI custom-node suite designed to make RunningHub image-generation workflows easier to control locally. It currently includes **Fast-RH LoRA**, **Fast-RH Random Seed**, **Fast KSampler**, **Fast Empty Latent Image**, and **Fast-RH Settings**.
 
 ## Features
 
@@ -22,15 +22,21 @@ Fast-RH LoRA does not submit or rewrite remote workflows by itself yet.
 1. Put this repository in `ComfyUI/custom_nodes/ComfyUI-Fast-RH`, or install it from its Git URL with ComfyUI Manager.
 2. Restart ComfyUI and refresh the browser.
 3. Add **Fast-RH → Fast-RH LoRA** and click a model selector.
-4. Open **登录设置** (Login settings), choose the site matching your website login, and paste your `Rh-Accesstoken` from the browser's Application / Cookies panel. A Cookie string or Bearer value also works.
+4. Open **Login Settings**, choose the site matching your website login, and paste your `Rh-Accesstoken` from the browser's Application / Cookies panel. A Cookie string or Bearer value also works.
 5. Save, browse a category, select a version, and click its cover to fill the node's model filename.
 6. Enter the pre-created remote LoRA loader node ID in the same row.
+
+## Fast-RH Settings
+
+Use **Fast-RH Settings** in place of the official **RH Settings** node. It has only `base_url` and `workflowId_webappId` widgets. Its `STRUCT` output connects directly to the official RunningHub executor and upload nodes.
+
+Copy `config.example.json` to `config.json` in this plugin directory and set `api_key` there. The file is ignored by Git. Set the node URL to the site for that key; it defaults to the URL in `config.json` when available. The key is read by the ComfyUI server when the node runs and is never a workflow widget. If you change `config.json`, queue the workflow again to use the new key. Replace existing **RH Settings** nodes in workflows before sharing them; old workflow files can still contain their original API key.
 
 ## Website login and catalog
 
 The new picker uses website authentication, independently of your OpenAPI key. It stores only the access token and site in local plaintext `session.json`, ignored by Git. Credentials are never returned to the frontend or serialized in workflows. A pasted Cookie string is reduced to its access token. All users of a shared ComfyUI server share this account; this is intended for a trusted local instance.
 
-Opening the picker calls `/api/instance/access/auth` to verify that RunningHub still accepts the token, then reads the JWT `exp` claim to display the actual `Rh-Accesstoken` expiration. The endpoint’s `expire_in` is the expiry of its newly issued temporary `accessKey`, not the website login token; the plugin neither stores nor uses that `accessKey`. Token renewal is not implemented because the refresh endpoint has not been verified. `Rh-Refreshtoken` is not stored or used. If login expires, sign in on the website again and update the access token. **清除登录** removes the local token. The local ComfyUI page cannot read the website's cookies across origins.
+Opening the picker calls `/api/instance/access/auth` to verify that RunningHub still accepts the token, then reads the JWT `exp` claim to display the actual `Rh-Accesstoken` expiration. The endpoint’s `expire_in` is the expiry of its newly issued temporary `accessKey`, not the website login token; the plugin neither stores nor uses that `accessKey`. Token renewal is not implemented because the refresh endpoint has not been verified. `Rh-Refreshtoken` is not stored or used. If login expires, sign in on the website again and update the access token. **Clear Login** removes the local token. The local ComfyUI page cannot read the website's cookies across origins.
 
 The picker caches each 30-model page by category, page, and search query for 24 hours. Normal browsing reads local cache; **Refresh list** fetches the current page again. **Clear cache** removes model-list pages while preserving custom covers. Each model version uses its RunningHub cover by default. **Set cover** selects a local PNG, JPG, or WebP image; **Restore remote cover** removes that override. The picker caches metadata and selected cover images, never model weights. Each version retains its own filename, preferring `resourceStorageName` and removing only the `models/loras/` prefix.
 

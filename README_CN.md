@@ -15,6 +15,7 @@ Fast-RH 是一套 ComfyUI 自定义节点，目标是让用户可以在本地更
 - 输出兼容官方 RunningHub 节点的 `ARRAY`（`nodeInfoList`）。
 - RunningHub API Key 只保存在 ComfyUI 服务端，不会写入工作流文件。
 - **Fast-RH Random Seed** 可为指定远程节点生成随机或自定义 seed，并直接输出兼容 RH Node Info List 的 ARRAY。
+- **Fast-RH Settings** 输出与官方设置节点兼容的 `STRUCT`，API Key 从本地配置读取。
 
 Fast-RH LoRA 目前只生成 LoRA 配置，不会自行提交或改写远程工作流。
 
@@ -27,6 +28,12 @@ Fast-RH LoRA 目前只生成 LoRA 配置，不会自行提交或改写远程工�
 5. 在 RunningHub 网站登录后，从浏览器开发者工具的 Application / Cookies 中复制 `Rh-Accesstoken` 的值，粘贴并保存。也可以粘贴完整 Cookie 字符串或 `Bearer …`。
 6. 在公共模型、我上传的、我的收藏中搜索模型，选择版本后点击封面，文件名会自动填回节点。
 7. 在该 LoRA 行填写远程工作流里对应 LoRA 加载节点的 `nodeId`。
+
+## Fast-RH Settings 节点
+
+使用 **Fast-RH Settings** 替换官方 **RH Settings**。节点界面只有 `base_url` 和 `workflowId_webappId`，输出的 `STRUCT` 可以直接连接官方执行和上传节点。
+
+将插件目录中的 `config.example.json` 复制为 `config.json`，在其中填写 `api_key`。此文件不会提交到 Git。节点地址应与 API Key 所属站点一致；有配置时默认使用配置中的地址。API Key 只在 ComfyUI 服务端运行时读取，不会成为工作流控件。修改配置后重新排队执行即可使用新 Key。分享旧工作流前请替换原来的 **RH Settings** 节点，因为旧文件可能已包含原始 API Key。
 
 ## 登录与模型列表
 

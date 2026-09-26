@@ -1,11 +1,13 @@
 import json
 import unittest
+from types import SimpleNamespace
+from unittest.mock import patch
 
 from _bootstrap import load_plugin_package
 
 load_plugin_package()
 
-from fast_rh_test_package.node import FastRHLoRA, FastRHRandomSeed, FastRHKSampler, FastRHEmptyLatentImage
+from fast_rh_test_package.node import FastRHLoRA, FastRHRandomSeed, FastRHKSampler, FastRHEmptyLatentImage, FastRHSettings
 
 
 class NodeTests(unittest.TestCase):
@@ -123,3 +125,36 @@ class EmptyLatentNodeTests(unittest.TestCase):
         ]:
             with self.subTest(values=values), self.assertRaisesRegex(ValueError, message):
                 FastRHEmptyLatentImage().build(*values)
+
+
+class SettingsNodeTests(unittest.TestCase):
+    def test_matches_official_struct_without_api_key_widget(self):
+        with patch("fast_rh_test_package.node.load_config", return_value=SimpleNamespace(
+            base_url="https://www.runninghub.ai", api_key="server-only-key"
+        )):
+            required = FastRHSettings.INPUT_TYPES()["required"]
+            self.assertEqual(set(required), {"base_url", "workflowId_webappId"})
+            self.assertEqual(required["base_url"][1]["default"], "https://www.runninghub.ai")
+            result = FastRHSettings().process(
+                " https://www.runninghub.ai/ ", " 12345 "
+            )
+        self.assertEqual(FastRHSettings.RETURN_TYPES, ("STRUCT",))
+        self.assertEqual(result, ({
+            "base_url": "https://www.runninghub.ai",
+            "apiKey": "server-only-key",
+            "workflowId_webappId": "12345",
+        },))
+
+    def test_validates_site_and_workflow_id(self):
+        for site in ("http://www.runninghub.cn", "https://evil.example",
+                     "https://www.runninghub.cn/path"):
+            with self.subTest(site=site), self.assertRaisesRegex(ValueError, "base_url"):
+                FastRHSettings().process(site, "123")
+        with self.assertRaisesRegex(ValueError, "workflowId_webappId"):
+            FastRHSettings().process("https://www.runninghub.cn", " ")
+
+    def test_missing_local_api_key_fails(self):
+        from fast_rh_test_package.config import ConfigError
+        with patch("fast_rh_test_package.node.load_config", side_effect=ConfigError("api_key is not configured")):
+            with self.assertRaisesRegex(ConfigError, "api_key"):
+                FastRHSettings().process("https://www.runninghub.cn", "123")

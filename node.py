@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import json
 from typing import Any
+from urllib.parse import urlparse
+
+from .config import CONFIG_PATH, ConfigError, load_config
 
 
 DEFAULT_ROWS = [
@@ -235,10 +238,60 @@ class FastRHEmptyLatentImage:
         return (node_info_list,)
 
 
-NODE_CLASS_MAPPINGS = {"FastRHLoRA": FastRHLoRA, "FastRHRandomSeed": FastRHRandomSeed, "FastRHKSampler": FastRHKSampler, "FastRHEmptyLatentImage": FastRHEmptyLatentImage}
+class FastRHSettings:
+    """Build the official RH Settings STRUCT using a server-side API key."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        try:
+            default_site = load_config().base_url
+        except ConfigError:
+            default_site = "https://www.runninghub.cn"
+        return {
+            "required": {
+                "base_url": ("STRING", {"default": default_site}),
+                "workflowId_webappId": ("STRING", {"default": ""}),
+            },
+        }
+
+    RETURN_TYPES = ("STRUCT",)
+    RETURN_NAMES = ("apiConfig",)
+    FUNCTION = "process"
+    CATEGORY = "Fast-RH"
+    DESCRIPTION = "Connect to official RunningHub nodes without storing the API key in the workflow. Set the key in this plugin's config.json."
+
+    @classmethod
+    def IS_CHANGED(cls, base_url, workflowId_webappId):
+        try:
+            return CONFIG_PATH.stat().st_mtime_ns
+        except OSError:
+            return float("nan")
+
+    def process(self, base_url: str, workflowId_webappId: str):
+        site = str(base_url).strip().rstrip("/")
+        parsed = urlparse(site)
+        if (parsed.scheme != "https" or parsed.hostname not in {
+            "www.runninghub.cn", "runninghub.cn",
+            "www.runninghub.ai", "runninghub.ai",
+        } or parsed.username or parsed.password or parsed.port
+                or parsed.path or parsed.query or parsed.fragment):
+            raise ValueError("base_url must be an HTTPS RunningHub .cn or .ai site URL")
+        workflow_id = str(workflowId_webappId).strip()
+        if not workflow_id:
+            raise ValueError("workflowId_webappId is required")
+        api_key = load_config().api_key
+        return ({
+            "base_url": site,
+            "apiKey": api_key,
+            "workflowId_webappId": workflow_id,
+        },)
+
+
+NODE_CLASS_MAPPINGS = {"FastRHLoRA": FastRHLoRA, "FastRHRandomSeed": FastRHRandomSeed, "FastRHKSampler": FastRHKSampler, "FastRHEmptyLatentImage": FastRHEmptyLatentImage, "FastRHSettings": FastRHSettings}
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "FastRHLoRA": "Fast-RH LoRA 堆",
+    "FastRHLoRA": "Fast-RH LoRA Stack",
     "FastRHRandomSeed": "Fast-RH Random Seed",
     "FastRHKSampler": "Fast KSampler",
     "FastRHEmptyLatentImage": "Fast Empty Latent Image",
+    "FastRHSettings": "Fast-RH Settings",
 }
