@@ -49,7 +49,7 @@ class ResourceTests(unittest.TestCase):
     def test_request_and_pagination(self, _session):
         payload = {'code': 0, 'data': {'records': [], 'total': '31', 'hasNext': True}}
         with patch.object(r, 'urlopen', return_value=io.BytesIO(json.dumps(payload).encode())) as fetch:
-            result = r.list_resources('favorites', 1, '中文')
+            result = r.list_resources('favorites', 1, '中文', refresh=True)
         self.assertEqual(result['total'], 31)
         self.assertTrue(result['has_next'])
         request = fetch.call_args.args[0]

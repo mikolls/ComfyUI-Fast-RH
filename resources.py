@@ -1,9 +1,11 @@
 """RunningHub website catalog, separate from the OpenAPI key."""
 from __future__ import annotations
 import base64
+import hashlib
 import json
 import os
 import re
+import threading
 import tempfile
 import time
 from pathlib import Path
@@ -11,6 +13,12 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 from .config import PLUGIN_DIR
+
+RESOURCE_CACHE_DIR = PLUGIN_DIR / "resource_cache"
+COVERS_DIR = PLUGIN_DIR / "covers"
+RESOURCE_CACHE_TTL = 24 * 60 * 60
+_CACHE_LOCK = threading.RLock()
+MAX_COVER_BYTES = 12 * 1024 * 1024
 
 SESSION_PATH = PLUGIN_DIR / "session.json"
 SITES = {"https://www.runninghub.ai", "https://www.runninghub.cn"}
@@ -121,7 +129,7 @@ def check_session(path: Path = SESSION_PATH) -> dict:
             "access_key_expires_at": expires_at}
 
 
-def list_resources(source: str, page: int, query: str) -> dict:
+def fetch_resources(source: str, page: int, query: str) -> dict:
     session = load_session()
     endpoint, body = build_query(source, page, query)
     request = Request(session["site"] + endpoint, data=json.dumps(body).encode(), headers={
@@ -146,3 +154,110 @@ def list_resources(source: str, page: int, query: str) -> dict:
         raise ResourceError("RunningHub 列表格式发生变化，未找到模型记录")
     return dict(items=[normalize_record(r) for r in data["records"]], page=page,
                 total=int(data.get("total") or 0), has_next=data.get("hasNext") is True)
+
+
+def model_key(model: str) -> str:
+    return hashlib.sha256(model.encode("utf-8")).hexdigest()
+
+
+def _cover_path(key: str) -> Path | None:
+    if not re.fullmatch(r"[a-f0-9]{64}", key):
+        raise ResourceError("LoRA 文件标识无效")
+    for extension in ("png", "jpg", "webp"):
+        path = COVERS_DIR / f"{key}.{extension}"
+        if path.is_file():
+            return path
+    return None
+
+
+def add_local_covers(items: list[dict]) -> list[dict]:
+    for item in items:
+        for version in item.get("versions") or []:
+            key = model_key(version["model"])
+            version["local_cover"] = f"/fast-rh/covers/{key}" if _cover_path(key) else ""
+    return items
+
+
+def list_resources(source: str, page: int, query: str, refresh: bool = False) -> dict:
+    build_query(source, page, query)
+    session = load_session()
+    account_key = hashlib.sha256(session["access_token"].encode("utf-8")).hexdigest()
+    cache_key = hashlib.sha256(json.dumps([session["site"], account_key, source, page, query.casefold()], ensure_ascii=False).encode("utf-8")).hexdigest()
+    cache_path = RESOURCE_CACHE_DIR / f"{cache_key}.json"
+    with _CACHE_LOCK:
+        if not refresh:
+            try:
+                envelope = json.loads(cache_path.read_text(encoding="utf-8"))
+                age = time.time() - float(envelope["fetched_at"])
+                if age < RESOURCE_CACHE_TTL and isinstance(envelope.get("result"), dict):
+                    result = dict(envelope["result"])
+                    result["items"] = add_local_covers(result["items"])
+                    result["source"] = "cache"
+                    result["cached_at"] = envelope["fetched_at"]
+                    return result
+            except (OSError, ValueError, KeyError, TypeError):
+                pass
+        result = fetch_resources(source, page, query)
+        fetched_at = time.time()
+        RESOURCE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        fd, temporary = tempfile.mkstemp(dir=RESOURCE_CACHE_DIR, suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                json.dump({"fetched_at": fetched_at, "result": result}, handle, ensure_ascii=False)
+            os.replace(temporary, cache_path)
+        finally:
+            if os.path.exists(temporary):
+                os.unlink(temporary)
+        result = dict(result)
+        result["items"] = add_local_covers(result["items"])
+        result["source"] = "remote"
+        result["cached_at"] = fetched_at
+        return result
+
+
+def clear_resource_cache() -> int:
+    removed = 0
+    with _CACHE_LOCK:
+        if RESOURCE_CACHE_DIR.exists():
+            for path in RESOURCE_CACHE_DIR.glob("*.json"):
+                path.unlink(missing_ok=True)
+                removed += 1
+    return removed
+
+
+def save_model_cover(key: str, content_type: str, data: bytes) -> str:
+    if not re.fullmatch(r"[a-f0-9]{64}", key):
+        raise ResourceError("LoRA 文件标识无效")
+    if not data or len(data) > MAX_COVER_BYTES:
+        raise ResourceError("封面不能为空，且不能超过 12 MB")
+    signatures = {
+        "image/png": ("png", lambda b: b.startswith(b"\x89PNG\r\n\x1a\n")),
+        "image/jpeg": ("jpg", lambda b: b.startswith(b"\xff\xd8\xff")),
+        "image/webp": ("webp", lambda b: len(b) >= 12 and b[:4] == b"RIFF" and b[8:12] == b"WEBP"),
+    }
+    specification = signatures.get(content_type.lower())
+    if not specification or not specification[1](data):
+        raise ResourceError("封面只支持 PNG、JPG 或 WebP 图片")
+    COVERS_DIR.mkdir(parents=True, exist_ok=True)
+    extension = specification[0]
+    for old_extension in ("png", "jpg", "webp"):
+        if old_extension != extension:
+            (COVERS_DIR / f"{key}.{old_extension}").unlink(missing_ok=True)
+    destination = COVERS_DIR / f"{key}.{extension}"
+    fd, temporary = tempfile.mkstemp(dir=COVERS_DIR, suffix=".tmp")
+    try:
+        with os.fdopen(fd, "wb") as handle:
+            handle.write(data)
+        os.replace(temporary, destination)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
+    return destination.name
+
+
+def delete_model_cover(key: str) -> bool:
+    path = _cover_path(key)
+    if path is None:
+        return False
+    path.unlink(missing_ok=True)
+    return True

@@ -34,5 +34,23 @@ class RouteTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.status, 200)
         with patch.object(routes, 'list_resources', return_value={'items': [], 'page': 2, 'total': 0, 'has_next': False}) as fetch:
             response = await routes.get_resources(types.SimpleNamespace(query={'source': 'uploaded', 'page': '2', 'q': 'test'}))
-            fetch.assert_called_once_with('uploaded', 2, 'test')
+            fetch.assert_called_once_with('uploaded', 2, 'test', False)
         self.assertTrue(json.loads(response.text)['ok'])
+    async def test_cover_upload_uses_local_multipart_headers(self):
+        model_field = types.SimpleNamespace(name='model', text=AsyncMock(return_value='face.safetensors'))
+        image_field = types.SimpleNamespace(
+            name='image',
+            headers={'Content-Type': 'image/png'},
+            read_chunk=AsyncMock(side_effect=[b'\x89PNG\r\n\x1a\nimage', b'']),
+        )
+        reader = types.SimpleNamespace(next=AsyncMock(side_effect=[model_field, image_field]))
+        request = types.SimpleNamespace(
+            content_type='multipart/form-data',
+            headers={},
+            multipart=AsyncMock(return_value=reader),
+        )
+        with patch.object(routes, 'save_model_cover', return_value='cover.png') as save:
+            response = await routes.upload_model_cover(request)
+        self.assertEqual(response.status, 200)
+        self.assertTrue(json.loads(response.text)['ok'])
+        self.assertEqual(save.call_args.args[1:], ('image/png', b'\x89PNG\r\n\x1a\nimage'))

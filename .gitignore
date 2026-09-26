@@ -12,3 +12,7 @@ dist/
 .vscode/
 deploy-local.ps1
 session.json
+
+resource_cache/
+covers/
+.deploy-*
