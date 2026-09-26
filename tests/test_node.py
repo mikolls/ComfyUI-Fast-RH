@@ -5,7 +5,7 @@ from _bootstrap import load_plugin_package
 
 load_plugin_package()
 
-from fast_rh_test_package.node import FastRHLoRA, FastRHRandomSeed, FastRHKSampler
+from fast_rh_test_package.node import FastRHLoRA, FastRHRandomSeed, FastRHKSampler, FastRHEmptyLatentImage
 
 
 class NodeTests(unittest.TestCase):
@@ -94,3 +94,32 @@ class KSamplerNodeTests(unittest.TestCase):
                 invalid[index] = value
                 with self.assertRaisesRegex(ValueError, message):
                     FastRHKSampler().build(*invalid)
+
+
+class EmptyLatentNodeTests(unittest.TestCase):
+    def test_maps_dimensions_to_official_node_info_list(self):
+        previous = [{"nodeId": 2, "fieldName": "seed", "fieldValue": "123"}]
+        result = FastRHEmptyLatentImage().build(8, 1024, 1920, 1, previous)[0]
+        self.assertEqual(len(previous), 1)
+        self.assertEqual(result, previous + [
+            {"nodeId": 8, "fieldName": "width", "fieldValue": "1024"},
+            {"nodeId": 8, "fieldName": "height", "fieldValue": "1920"},
+            {"nodeId": 8, "fieldName": "batch_size", "fieldValue": "1"},
+        ])
+        self.assertEqual(FastRHEmptyLatentImage.RETURN_TYPES, ("ARRAY",))
+        self.assertEqual(
+            FastRHEmptyLatentImage.INPUT_TYPES()["optional"]["previousNodeInfoList"][0],
+            "ARRAY",
+        )
+
+    def test_rejects_invalid_remote_dimensions(self):
+        for values, message in [
+            ((0, 1024, 1920, 1), "nodeId"),
+            ((8, 15, 1920, 1), "width"),
+            ((8, 1025, 1920, 1), "width"),
+            ((8, 1024.5, 1920, 1), "width"),
+            ((8, 1024, 16385, 1), "height"),
+            ((8, 1024, 1920, 0), "batch_size"),
+        ]:
+            with self.subTest(values=values), self.assertRaisesRegex(ValueError, message):
+                FastRHEmptyLatentImage().build(*values)

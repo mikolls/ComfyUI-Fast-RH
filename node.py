@@ -166,7 +166,7 @@ class FastRHKSampler:
               previousNodeInfoList=None):
         import math
 
-        if isinstance(nodeId, bool) or not 1 <= int(nodeId) <= 999999:
+        if isinstance(nodeId, bool) or not isinstance(nodeId, int) or not 1 <= nodeId <= 999999:
             raise ValueError("Remote KSampler nodeId must be between 1 and 999999")
         if isinstance(seed, bool) or not 0 <= int(seed) <= self.MAX_SEED:
             raise ValueError(f"Seed must be between 0 and {self.MAX_SEED}")
@@ -196,9 +196,49 @@ class FastRHKSampler:
         return (node_info_list,)
 
 
-NODE_CLASS_MAPPINGS = {"FastRHLoRA": FastRHLoRA, "FastRHRandomSeed": FastRHRandomSeed, "FastRHKSampler": FastRHKSampler}
+class FastRHEmptyLatentImage:
+    """Map Empty Latent Image dimensions to a remote RunningHub workflow."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "nodeId": ("INT", {"default": 0, "min": 0, "max": 999999, "step": 1}),
+                "width": ("INT", {"default": 1024, "min": 16, "max": 16384, "step": 8}),
+                "height": ("INT", {"default": 1920, "min": 16, "max": 16384, "step": 8}),
+                "batch_size": ("INT", {"default": 1, "min": 1, "max": 4096, "step": 1}),
+            },
+            "optional": {"previousNodeInfoList": ("ARRAY", {"default": []})},
+        }
+
+    RETURN_TYPES = ("ARRAY",)
+    RETURN_NAMES = ("nodeInfoList",)
+    FUNCTION = "build"
+    CATEGORY = "Fast-RH"
+    DESCRIPTION = "Override a remote Empty Latent Image node through the official RunningHub nodeInfoList."
+
+    def build(self, nodeId: int, width: int, height: int, batch_size: int,
+              previousNodeInfoList=None):
+        if isinstance(nodeId, bool) or not isinstance(nodeId, int) or not 1 <= nodeId <= 999999:
+            raise ValueError("Remote Empty Latent Image nodeId must be between 1 and 999999")
+        for field, value in (("width", width), ("height", height)):
+            if isinstance(value, bool) or not isinstance(value, int) or not 16 <= value <= 16384 or value % 8:
+                raise ValueError(f"Empty Latent Image {field} must be a multiple of 8 between 16 and 16384")
+        if isinstance(batch_size, bool) or not isinstance(batch_size, int) or not 1 <= batch_size <= 4096:
+            raise ValueError("Empty Latent Image batch_size must be between 1 and 4096")
+
+        node_info_list = list(previousNodeInfoList or [])
+        for field, value in (("width", width), ("height", height), ("batch_size", batch_size)):
+            node_info_list.append({
+                "nodeId": int(nodeId), "fieldName": field, "fieldValue": str(int(value)),
+            })
+        return (node_info_list,)
+
+
+NODE_CLASS_MAPPINGS = {"FastRHLoRA": FastRHLoRA, "FastRHRandomSeed": FastRHRandomSeed, "FastRHKSampler": FastRHKSampler, "FastRHEmptyLatentImage": FastRHEmptyLatentImage}
 NODE_DISPLAY_NAME_MAPPINGS = {
     "FastRHLoRA": "Fast-RH LoRA 堆",
     "FastRHRandomSeed": "Fast-RH Random Seed",
     "FastRHKSampler": "Fast KSampler",
+    "FastRHEmptyLatentImage": "Fast Empty Latent Image",
 }

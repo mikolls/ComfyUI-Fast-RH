@@ -2,7 +2,7 @@
 
 [简体中文](README_CN.md) | English
 
-Fast-RH is a ComfyUI custom-node suite designed to make RunningHub image-generation workflows easier to control locally. It currently includes **Fast-RH LoRA**, **Fast-RH Random Seed**, and **Fast KSampler**.
+Fast-RH is a ComfyUI custom-node suite designed to make RunningHub image-generation workflows easier to control locally. It currently includes **Fast-RH LoRA**, **Fast-RH Random Seed**, **Fast KSampler**, and **Fast Empty Latent Image**.
 
 ## Features
 
@@ -65,3 +65,8 @@ Set the target remote workflow `nodeId` and `seed`. The seed uses ComfyUI's nati
 Set the remote workflow KSampler `nodeId` and edit seed, steps, cfg, sampler_name, scheduler, and denoise. Seed supports ComfyUI's native control-after-generate menu. This node builds remote overrides; it does not run a sampler locally.
 
 The output is an `ARRAY` accepted by the official RH Node Info List / RH Execute Workflow nodes. Chain an existing official Node Info List into `previousNodeInfoList`, then connect Fast KSampler's `nodeInfoList` to the official executor. The remote workflow must contain the specified KSampler node ID.
+## Fast Empty Latent Image
+
+Set the remote Empty Latent Image `nodeId`, width, height, and batch_size. Width and height range from 16 to 16384 in steps of 8; batch_size ranges from 1 to 4096. This node builds remote overrides and does not allocate a local LATENT.
+
+It appends width, height, and batch_size entries to an official `ARRAY / nodeInfoList`. Connect an earlier parameter node to `previousNodeInfoList` to chain them, then send this node's output to RH Execute Workflow.

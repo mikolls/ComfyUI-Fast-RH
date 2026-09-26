@@ -2,7 +2,7 @@
 
 简体中文 | [English](README.md)
 
-Fast-RH 是一套 ComfyUI 自定义节点，目标是让用户可以在本地更方便地控制 RunningHub 图片生成工作流。目前包含 **Fast-RH LoRA**、**Fast-RH Random Seed** 和 **Fast KSampler**。
+Fast-RH 是一套 ComfyUI 自定义节点，目标是让用户可以在本地更方便地控制 RunningHub 图片生成工作流。目前包含 **Fast-RH LoRA**、**Fast-RH Random Seed**、**Fast KSampler** 和 **Fast Empty Latent Image**。
 
 ## 功能
 
@@ -68,3 +68,8 @@ python -m unittest discover -s tests -v
 填写远程工作流中 KSampler 的 `nodeId`，即可控制 seed、steps、cfg、sampler_name、scheduler 和 denoise。seed 支持 ComfyUI 原生的执行后随机化。节点只构造远程参数，不在本地执行采样。
 
 输出类型为官方 RH Node Info List / RH Execute Workflow 可接收的 `ARRAY`。可将已有的官方 Node Info List 输出接到 `previousNodeInfoList`，再将 Fast KSampler 的 `nodeInfoList` 接到官方执行节点。远程工作流中的 KSampler 必须有对应的节点 ID。
+## Fast Empty Latent Image 节点
+
+填写远程工作流中 Empty Latent Image 的 `nodeId`，设置 width、height 和 batch_size。宽高范围为 16–16384，按 8 的倍数调整；批次数量范围为 1–4096。节点只生成远程参数，不在本地创建 LATENT。
+
+输出与官方 RH Node Info List 和 RH Execute Workflow 兼容的 `ARRAY`，每次附加 width、height、batch_size 三条参数。可将前一个参数节点接入 `previousNodeInfoList` 继续串联。
