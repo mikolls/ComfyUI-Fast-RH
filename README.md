@@ -1,10 +1,15 @@
 # Fast-RH
 
+Simpler ComfyUI nodes for controlling remote RunningHub workflows.
+
+Fast-RH makes remote RunningHub workflows feel more like local ComfyUI workflows.
+It provides convenient controls for LoRA models, KSampler parameters,
+image size, random seeds, and RunningHub configuration.
+
+Built as a companion to the official [ComfyUI_RH_APICall](https://github.com/HM-RunningHub/ComfyUI_RH_APICall) nodes —
+you can keep using the official workflow execution nodes.
+
 [简体中文](README_CN.md) | English
-
-Fast-RH makes it easier to control RunningHub image-generation workflows locally from ComfyUI.
-
-The official [ComfyUI_RH_APICall](https://github.com/HM-RunningHub/ComfyUI_RH_APICall) nodes can be cumbersome to use, so this plugin provides simpler nodes for common tasks.
 
 ## Installation
 

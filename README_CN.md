@@ -1,10 +1,14 @@
 # Fast-RH
 
+用更简单的 ComfyUI 节点控制远程 RunningHub 工作流。
+
+Fast-RH 让远程 RunningHub 工作流用起来更像本地 ComfyUI 工作流，
+提供 LoRA 模型、KSampler 参数、图像尺寸、随机种子和 RunningHub 配置等便捷控件。
+
+本项目配合官方 [ComfyUI_RH_APICall](https://github.com/HM-RunningHub/ComfyUI_RH_APICall) 节点使用，
+工作流执行仍可使用官方节点。
+
 简体中文 | [English](README.md)
-
-Fast-RH 的目标是让用户可以在本地更方便地控制 RunningHub 图片生成工作流。
-
-官方的节点 [ComfyUI_RH_APICall](https://github.com/HM-RunningHub/ComfyUI_RH_APICall) 不太好用，所以才封装了更方便的节点。
 
 ## 安装
 
@@ -60,7 +64,7 @@ API Key 由 ComfyUI 服务端从配置文件读取，不会保存在工作流中
 
 模型列表显示旧内容时，点击**刷新列表**更新当前页；点击**清理缓存**可清除已缓存的列表。模型封面可用**设置封面**更换为本地图片，再用**恢复远程封面**撤销更换。登录令牌失效时，重新登录 RunningHub 并在**登录设置**中保存新令牌；**清除登录**可删除本地保存的令牌。
 
-## Fast-RH Random Seed 节点
+## Fast-RH Random Seed
 
 ![图片](./img/62238ad2-ca72-4130-9377-d7933cee6781.png)
 
@@ -70,7 +74,7 @@ API Key 由 ComfyUI 服务端从配置文件读取，不会保存在工作流中
 2. 在 seed 的 ComfyUI 执行后控制中选择 `randomize`，可在每次排队时使用新种子；选择 `fixed`，则保持输入框中的种子。
 3. 将 `nodeInfoList` 输出连接到官方 **RH Execute Workflow** 的 `nodeInfoList` 输入。若还要传入其他节点参数，先将前一个参数节点的输出接到 `previousNodeInfoList`。
 
-## Fast KSampler 节点
+## Fast KSampler
 
 ![图片](./img/8cb1e8f6-5608-4273-8c1e-206b2ba0622f.png)
 
@@ -81,7 +85,7 @@ API Key 由 ComfyUI 服务端从配置文件读取，不会保存在工作流中
 
 这些设置会改写远程 KSampler 的参数，本节点不会在本地执行采样。
 
-## Fast Empty Latent Image 节点
+## Fast Empty Latent Image
 
 ![图片](./img/346bed77-f0df-449d-a77d-3e4df037aa67.png)
 

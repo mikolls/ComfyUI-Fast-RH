@@ -1,0 +1,18 @@
+[project]
+name = "comfyui-fast-rh"
+description = "Simpler ComfyUI nodes for controlling RunningHub workflows locally."
+version = "0.1.0"
+license = "MIT"
+
+dependencies = ["aiohttp>=3.8"]
+
+[project.urls]
+Repository = "https://github.com/mikolls/ComfyUI-Fast-RH"
+Documentation = "https://github.com/mikolls/ComfyUI-Fast-RH"
+"Bug Tracker" = "https://github.com/mikolls/ComfyUI-Fast-RH/issues"
+
+[tool.comfy]
+PublisherId = "mikolls"
+DisplayName = "ComfyUI Fast-RH"
+Icon = ""
+includes = []
