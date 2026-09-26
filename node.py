@@ -4,7 +4,7 @@ import json
 from typing import Any
 from urllib.parse import urlparse
 
-from .config import CONFIG_PATH, ConfigError, load_config
+from .config import resolve_config_path, load_config
 
 
 DEFAULT_ROWS = [
@@ -243,14 +243,11 @@ class FastRHSettings:
 
     @classmethod
     def INPUT_TYPES(cls):
-        try:
-            default_site = load_config().base_url
-        except ConfigError:
-            default_site = "https://www.runninghub.cn"
         return {
             "required": {
-                "base_url": ("STRING", {"default": default_site}),
+                "base_url": ("STRING", {"default": ""}),
                 "workflowId_webappId": ("STRING", {"default": ""}),
+                "config_path": ("STRING", {"default": "config.json"}),
             },
         }
 
@@ -258,16 +255,17 @@ class FastRHSettings:
     RETURN_NAMES = ("apiConfig",)
     FUNCTION = "process"
     CATEGORY = "Fast-RH"
-    DESCRIPTION = "Connect to official RunningHub nodes without storing the API key in the workflow. Set the key in this plugin's config.json."
+    DESCRIPTION = "Set the RunningHub base_url and the path to a server-side JSON file containing api_key."
 
     @classmethod
-    def IS_CHANGED(cls, base_url, workflowId_webappId):
+    def IS_CHANGED(cls, base_url, workflowId_webappId, config_path="config.json"):
         try:
-            return CONFIG_PATH.stat().st_mtime_ns
+            return (config_path, resolve_config_path(config_path).stat().st_mtime_ns)
         except OSError:
             return float("nan")
 
-    def process(self, base_url: str, workflowId_webappId: str):
+    def process(self, base_url: str, workflowId_webappId: str, config_path: str = "config.json"):
+        config = load_config(resolve_config_path(config_path))
         site = str(base_url).strip().rstrip("/")
         parsed = urlparse(site)
         if (parsed.scheme != "https" or parsed.hostname not in {
@@ -279,7 +277,7 @@ class FastRHSettings:
         workflow_id = str(workflowId_webappId).strip()
         if not workflow_id:
             raise ValueError("workflowId_webappId is required")
-        api_key = load_config().api_key
+        api_key = config.api_key
         return ({
             "base_url": site,
             "apiKey": api_key,

@@ -1,6 +1,3 @@
 {
-  "base_url": "https://www.runninghub.cn",
-  "api_key": "replace-with-your-runninghub-api-key",
-  "timeout_seconds": 30
+  "api_key": "replace-with-your-runninghub-api-key"
 }
-

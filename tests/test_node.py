@@ -130,28 +130,45 @@ class EmptyLatentNodeTests(unittest.TestCase):
 class SettingsNodeTests(unittest.TestCase):
     def test_matches_official_struct_without_api_key_widget(self):
         with patch("fast_rh_test_package.node.load_config", return_value=SimpleNamespace(
-            base_url="https://www.runninghub.ai", api_key="server-only-key"
+            api_key="server-only-key"
         )):
             required = FastRHSettings.INPUT_TYPES()["required"]
-            self.assertEqual(set(required), {"base_url", "workflowId_webappId"})
-            self.assertEqual(required["base_url"][1]["default"], "https://www.runninghub.ai")
+            self.assertEqual(set(required), {"base_url", "workflowId_webappId", "config_path"})
+            self.assertEqual(required["config_path"][1]["default"], "config.json")
+            self.assertEqual(required["base_url"][1]["default"], "")
             result = FastRHSettings().process(
-                " https://www.runninghub.ai/ ", " 12345 "
+                " https://www.runninghub.cn/ ", " 12345 "
             )
         self.assertEqual(FastRHSettings.RETURN_TYPES, ("STRUCT",))
         self.assertEqual(result, ({
-            "base_url": "https://www.runninghub.ai",
+            "base_url": "https://www.runninghub.cn",
             "apiKey": "server-only-key",
             "workflowId_webappId": "12345",
         },))
 
+    def test_config_path_provides_key_but_node_requires_url(self):
+        from fast_rh_test_package.config import RunningHubConfig
+        with patch("fast_rh_test_package.node.load_config", return_value=RunningHubConfig(
+            "selected-server-key"
+        )) as load:
+            result = FastRHSettings().process("https://www.runninghub.ai", "123", "config.alt.json")
+            with self.assertRaisesRegex(ValueError, "base_url"):
+                FastRHSettings().process("", "123", "config.alt.json")
+        self.assertEqual(result[0]["base_url"], "https://www.runninghub.ai")
+        self.assertEqual(result[0]["apiKey"], "selected-server-key")
+        self.assertEqual(load.call_args.args[0].name, "config.alt.json")
+        self.assertNotIn("api_key", FastRHSettings.INPUT_TYPES()["required"])
+
     def test_validates_site_and_workflow_id(self):
-        for site in ("http://www.runninghub.cn", "https://evil.example",
-                     "https://www.runninghub.cn/path"):
-            with self.subTest(site=site), self.assertRaisesRegex(ValueError, "base_url"):
-                FastRHSettings().process(site, "123")
-        with self.assertRaisesRegex(ValueError, "workflowId_webappId"):
-            FastRHSettings().process("https://www.runninghub.cn", " ")
+        with patch("fast_rh_test_package.node.load_config", return_value=SimpleNamespace(
+            api_key="server-only-key"
+        )):
+            for site in ("http://www.runninghub.cn", "https://evil.example",
+                         "https://www.runninghub.cn/path"):
+                with self.subTest(site=site), self.assertRaisesRegex(ValueError, "base_url"):
+                    FastRHSettings().process(site, "123")
+            with self.assertRaisesRegex(ValueError, "workflowId_webappId"):
+                FastRHSettings().process("https://www.runninghub.cn", " ")
 
     def test_missing_local_api_key_fails(self):
         from fast_rh_test_package.config import ConfigError
