@@ -2,78 +2,93 @@
 
 [简体中文](README_CN.md) | English
 
-Fast-RH is a ComfyUI custom-node suite designed to make RunningHub image-generation workflows easier to control locally. It currently includes **Fast-RH LoRA**, **Fast-RH Random Seed**, **Fast KSampler**, **Fast Empty Latent Image**, and **Fast-RH Settings**.
+Fast-RH makes it easier to control RunningHub image-generation workflows locally from ComfyUI.
 
-## Features
-
-- Browses RunningHub public, uploaded, and collected LoRAs through its website APIs.
-- Shows searchable, paginated model cards with covers, base models, real filenames, and a version selector.
-- Maps each selected LoRA to a pre-created remote workflow node by its `nodeId`.
-- Caches catalog pages for 24 hours and supports per-model local cover overrides.
-- Supports 1–16 LoRA entries in one node, with four entries by default.
-- Configures a stable slot name, enabled state, model strength, and CLIP strength for every entry.
-- Outputs an `ARRAY` compatible with the official RunningHub RH Node Info List and workflow executor.
-- Keeps the RunningHub API key on the ComfyUI server and out of workflow files.
-
-Fast-RH LoRA does not submit or rewrite remote workflows by itself yet.
+The official [ComfyUI_RH_APICall](https://github.com/HM-RunningHub/ComfyUI_RH_APICall) nodes can be cumbersome to use, so this plugin provides simpler nodes for common tasks.
 
 ## Installation
 
-1. Put this repository in `ComfyUI/custom_nodes/ComfyUI-Fast-RH`, or install it from its Git URL with ComfyUI Manager.
-2. Restart ComfyUI and refresh the browser.
-3. Add **Fast-RH → Fast-RH LoRA** and click a model selector.
-4. Open **Login Settings**, choose the site matching your website login, and paste your `Rh-Accesstoken` from the browser's Application / Cookies panel. A Cookie string or Bearer value also works.
-5. Save, browse a category, select a version, and click its cover to fill the node's model filename.
-6. Enter the pre-created remote LoRA loader node ID in the same row.
+- Place this repository in `ComfyUI/custom_nodes/ComfyUI-Fast-RH`, or install it through ComfyUI Manager using its Git URL.
 
 ## Fast-RH Settings
 
-Use **Fast-RH Settings** in place of the official **RH Settings** node. Its `STRUCT` output connects directly to the official RunningHub executor and upload nodes.
+The official **RH Settings** node saves `api_key` as a node parameter. When you share an image containing workflow metadata, that key may be included in the image.
 
-Copy `config.example.json` to `config.json` in this plugin directory and set only `api_key`. Enter the RunningHub `base_url` in the Settings node; it must match the site for that key. Enter the config file path directly in the third `config_path` field. It defaults to `config.json` next to `node.py`; relative paths are resolved from that directory, and absolute paths also work. The server reads the selected file, while the workflow saves only its path and never the API key. Queue the workflow again after changing a config file. Replace existing **RH Settings** nodes before sharing; old workflow files can still contain their original API key.
+Replace **RH Settings** with **Fast-RH Settings**. The node has `base_url`, `workflowId_webappId`, and `config_path` inputs. Its `apiConfig` (`STRUCT`) output connects to the official RunningHub execution and upload nodes without changing the rest of the workflow.
 
-## Website login and catalog
+### Setup
 
-The new picker uses website authentication, independently of your OpenAPI key. It stores only the access token and site in local plaintext `session.json`, ignored by Git. Credentials are never returned to the frontend or serialized in workflows. A pasted Cookie string is reduced to its access token. All users of a shared ComfyUI server share this account; this is intended for a trusted local instance.
+![Fast-RH Settings node](./img/3a050c99-806e-4028-a5d2-2bb53145ec11.png)
 
-Opening the picker calls `/api/instance/access/auth` to verify that RunningHub still accepts the token, then reads the JWT `exp` claim to display the actual `Rh-Accesstoken` expiration. The endpoint’s `expire_in` is the expiry of its newly issued temporary `accessKey`, not the website login token; the plugin neither stores nor uses that `accessKey`. Token renewal is not implemented because the refresh endpoint has not been verified. `Rh-Refreshtoken` is not stored or used. If login expires, sign in on the website again and update the access token. **Clear Login** removes the local token. The local ComfyUI page cannot read the website's cookies across origins.
+1. Copy `config.example.json` to `config.json` in the **ComfyUI-Fast-RH** plugin directory, then enter your RunningHub API key:
 
-The picker caches each 30-model page by category, page, and search query for 24 hours. Normal browsing reads local cache; **Refresh list** fetches the current page again. **Clear cache** removes model-list pages while preserving custom covers. Each model version uses its RunningHub cover by default. **Set cover** selects a local PNG, JPG, or WebP image; **Restore remote cover** removes that override. The picker caches metadata and selected cover images, never model weights. Each version retains its own filename, preferring `resourceStorageName` and removing only the `models/loras/` prefix.
+   ```json
+   {
+     "api_key": "enter_your_api_key_here"
+   }
+   ```
 
-## Output contract
+2. In **Fast-RH Settings**, set `base_url` to the RunningHub site associated with that API key. Enter the remote workflow or Web App ID in `workflowId_webappId`.
+3. `config_path` defaults to `config.json` in the plugin directory. For a file elsewhere, enter an absolute path or a path relative to the directory containing `node.py`. Connect `apiConfig` to the execution or upload node that previously received the official **RH Settings** output.
 
-The node returns an `ARRAY`. Each enabled LoRA creates three official `nodeInfoList` entries:
+ComfyUI reads the API key from the file when it runs the workflow; the key is not saved in the workflow. After editing `config.json`, queue the workflow again to use the new key.
 
-```text
-{nodeId, fieldName: "lora_name", fieldValue: "model filename"}
-{nodeId, fieldName: "strength_model", fieldValue: "model strength"}
-{nodeId, fieldName: "strength_clip", fieldValue: "CLIP strength"}
-```
+> **Note:** Replace old **RH Settings** nodes before sharing workflows. Images and workflow files created earlier may still contain the original API key; replacing the node does not remove it from those files.
 
-Slots must be non-empty and unique within the node. Enabled rows need a model and remote node ID. The official upload node returns a STRING filename; connect it to RH Node Info List fieldValue, then connect that ARRAY to this node's previousNodeInfoList. Both strengths accept values from `-100` to `100` and default to `1.0`.
+## Fast-RH LoRA Stack
 
-## Development
+Create a Load LoRA placeholder in the remote RunningHub workflow first. You can select any model and set `strength_model` to `0`. Then you can switch the remote model from ComfyUI.
 
-Run the dependency-free test suite from the repository root:
+![Load LoRA placeholder in the remote workflow](./img/2a56a34d-0c7d-4a4f-b15a-3537018c9d1d.png)
 
-```bash
-python -m unittest discover -s tests -v
-```
+### How to use
+
+Add **Fast-RH LoRA Stack** in ComfyUI.
+
+1. Click **Click to choose a LoRA model…** in the node to open the model picker. Under **Login Settings**, choose the RunningHub site where you signed in, paste `Rh-Accesstoken` from your browser's developer tools under Cookies, and click **Save Login**. A full Cookie string or Bearer token also works.
+
+   ![LoRA model selector](./img/fac64e27-0deb-4496-b9ff-3b94e9870a44.png)
+   ![RunningHub login settings](./img/b3e7a312-e495-4520-8383-cb2203871682.png)
+   ![RunningHub access token](./img/3c12b9e2-ee36-4362-9356-3580dc999c9e.png)
+
+2. Choose a model category, search for a model, and select its version. Click the version's cover to fill its model filename into the current LoRA entry.
+3. In that entry, enter the ID of the corresponding LoRA loader node in the remote workflow. Set model and CLIP strength as needed, then enable the entry. You can add up to 16 entries; each enabled entry needs a corresponding remote node ID.
+
+   ![LoRA entry settings](./img/2b669a78-21a8-4de6-8aeb-57f63f5b1b79.png)
+
+4. Connect the node's `nodeInfoList` (`ARRAY`) output to the official RunningHub **RH Execute Workflow** node's `nodeInfoList` input. To combine other parameters, connect the preceding parameter node's `ARRAY` output to `previousNodeInfoList` first.
+
+If the model list is stale, click **Refresh List** to update the current page or **Clear List Cache** to clear cached lists. Use **Set Cover** to choose a local cover image and **Restore Remote Cover** to undo it. If your login expires, sign in to RunningHub again and save a new token under **Login Settings**; **Clear Login** removes the locally saved token.
 
 ## Fast-RH Random Seed
 
-Set the target remote workflow `nodeId` and `seed`. The seed uses ComfyUI's native control-after-generate menu: choose `randomize` for a new value on each queued run or `fixed` to reuse the entered value. The node outputs the same `ARRAY` contract as RunningHub's **RH Node Info List**, fixes `fieldName` to `seed`, and supports chaining through the optional `previousNodeInfoList` input.
+![Fast-RH Random Seed node](./img/62238ad2-ca72-4130-9377-d7933cee6781.png)
+
+### How to use
+
+1. Find the node ID whose seed you want to change in the remote workflow. Enter it in `nodeId`, then set `seed`.
+2. In ComfyUI's control after generate for seed, choose `randomize` to use a new seed on each queued run, or `fixed` to keep the entered seed.
+3. Connect `nodeInfoList` to the official **RH Execute Workflow** node's `nodeInfoList` input. To include other parameters, connect the preceding parameter node's output to `previousNodeInfoList` first.
 
 ## Fast KSampler
 
-Set the remote workflow KSampler `nodeId` and edit seed, steps, cfg, sampler_name, scheduler, and denoise. Seed supports ComfyUI's native control-after-generate menu. This node builds remote overrides; it does not run a sampler locally.
+![Fast KSampler node](./img/8cb1e8f6-5608-4273-8c1e-206b2ba0622f.png)
 
-The output is an `ARRAY` accepted by the official RH Node Info List / RH Execute Workflow nodes. Chain an existing official Node Info List into `previousNodeInfoList`, then connect Fast KSampler's `nodeInfoList` to the official executor. The remote workflow must contain the specified KSampler node ID.
+### How to use
+
+1. Find the KSampler node ID in the remote workflow and enter it in `nodeId`. Set `seed`, `steps`, `cfg`, `sampler_name`, `scheduler`, and `denoise`. To use a new seed on each run, set seed's control after generate to `randomize`.
+2. Connect this node's `nodeInfoList` output to the official **RH Execute Workflow** node's `nodeInfoList` input. If you already use **RH Node Info List** or another parameter node, connect its `ARRAY` output to `previousNodeInfoList` first.
+
+These settings override the remote KSampler parameters. This node does not run sampling locally.
 
 ## Fast Empty Latent Image
 
-Set the remote Empty Latent Image `nodeId`, width, height, and batch_size. Width and height range from 16 to 16384 in steps of 8; batch_size ranges from 1 to 4096. This node builds remote overrides and does not allocate a local LATENT.
+![Fast Empty Latent Image node](./img/346bed77-f0df-449d-a77d-3e4df037aa67.png)
 
-It appends width, height, and batch_size entries to an official `ARRAY / nodeInfoList`. Connect an earlier parameter node to `previousNodeInfoList` to chain them, then send this node's output to RH Execute Workflow.
+### How to use
 
-The UI offers Preset and Custom modes. A preset selects a width and height pair; Custom lets you edit each value. Switching modes preserves both selections, and the bottom Swap Width and Height button flips the active dimensions.
+1. Find the Empty Latent Image node ID in the remote workflow and enter it in `nodeId`.
+2. Choose `Preset` to select a width and height pair, or `Custom` to enter `width` and `height` separately. Use `Swap Width / Height ↔` to exchange the current dimensions, then set `batch_size`. Width and height must be multiples of 8 from 16 to 16384; `batch_size` ranges from 1 to 4096.
+3. Connect `nodeInfoList` to the official **RH Execute Workflow** node's `nodeInfoList` input. If you have other parameter nodes, connect their `ARRAY` output to `previousNodeInfoList` first.
+
+`Preset` and `Custom` retain their own dimensions when you switch between them. This node only changes remote workflow parameters; it does not create a local LATENT.
