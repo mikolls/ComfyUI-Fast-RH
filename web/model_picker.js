@@ -3,6 +3,28 @@ import { api } from "/scripts/api.js";
 let dialog, resolveSelection, controller, requestId = 0, previousFocus;
 let source = "public", page = 1, hasNext = false;
 const $ = selector => dialog.querySelector(selector);
+const coverListeners = new Set();
+let coverRevision = 0;
+
+export function onLoraCoverChanged(listener) {
+  coverListeners.add(listener);
+  return () => coverListeners.delete(listener);
+}
+
+function freshCoverUrl(url) {
+  const [path, query] = url.split('?');
+  const params = new URLSearchParams(query);
+  params.set('v', `${Date.now()}-${++coverRevision}`);
+  return `${path}?${params}`;
+}
+
+function coverFor(version, item) {
+  return version?.local_cover || version?.image || item.image || '';
+}
+
+function notifyCoverChanged(version, item) {
+  for (const listener of coverListeners) listener(version.model, coverFor(version, item));
+}
 
 async function jsonRequest(url, options) {
   const response = await api.fetchApi(url, options);
@@ -102,7 +124,13 @@ function renderCard(item) {
   const fileInput = card.querySelector('[data-cover-file]');
   card.querySelector('.fast-rh-card-title').textContent = item.title;
   card.querySelector('.fast-rh-collected').textContent = item.collected ? '★ Favorited' : '';
-  item.versions.forEach((v, i) => { const option = document.createElement('option'); option.value = i; option.textContent = v.version; select.append(option); });
+  item.versions.forEach((v, i) => {
+    if (v.local_cover) v.local_cover = freshCoverUrl(v.local_cover);
+    const option = document.createElement('option');
+    option.value = i;
+    option.textContent = v.version;
+    select.append(option);
+  });
   const update = () => {
     const v = item.versions[Number(select.value)];
     const name = v?.model || 'No versions available';
@@ -111,11 +139,11 @@ function renderCard(item) {
     pick.title = `${item.title}\n${name}`;
     pick.setAttribute('aria-label', `Select ${item.title} ${v?.version || ''}`);
     pick.disabled = !v;
-    const image = v?.local_cover || v?.image || item.image;
+    const image = coverFor(v, item);
     img.dataset.custom = v?.local_cover ? 'true' : 'false';
     img.alt = v?.local_cover ? 'Local custom cover' : `${item.title} remote cover`;
     img.hidden = !image;
-    if (image) img.src = v?.local_cover ? `${v.local_cover}?v=${Date.now()}` : image;
+    if (image) img.src = image;
     else img.removeAttribute('src');
     card.querySelector('[data-cover-reset]').disabled = !v?.local_cover;
   };
@@ -128,7 +156,7 @@ function renderCard(item) {
   select.disabled = !item.versions.length;
   pick.onclick = () => {
     const version = item.versions[Number(select.value)];
-    if (version) close({ model: version.model, cover: version.local_cover || version.image || item.image || '' });
+    if (version) close({ model: version.model, cover: coverFor(version, item) });
   };
   card.querySelector('[data-cover]').onclick = () => fileInput.click();
   fileInput.onchange = async () => {
@@ -148,8 +176,9 @@ function renderCard(item) {
     try {
       const result = await jsonRequest('/fast-rh/covers', { method: 'POST', body: form });
       $('.fast-rh-status').textContent = `Set a local cover for ${v.model}`;
-      v.local_cover = result.url;
+      v.local_cover = freshCoverUrl(result.url);
       update();
+      notifyCoverChanged(v, item);
     } catch (error) { $('.fast-rh-status').textContent = `Failed to save cover: ${error.message}`; }
     finally { button.disabled = false; fileInput.value = ''; }
   };
@@ -161,6 +190,7 @@ function renderCard(item) {
       await jsonRequest(`/fast-rh/covers?${params}`, { method: 'DELETE' });
       v.local_cover = '';
       update();
+      notifyCoverChanged(v, item);
       $('.fast-rh-status').textContent = 'Restored the RunningHub remote cover';
     } catch (error) {
       $('.fast-rh-status').textContent = `Failed to restore remote cover: ${error.message}`;

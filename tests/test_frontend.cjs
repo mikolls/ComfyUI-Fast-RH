@@ -14,6 +14,15 @@ class Element {
   setAttribute() {}
   removeAttribute() {}
   addEventListener() {}
+  querySelector(selector) {
+    const tag = selector.toLowerCase();
+    for (const child of this.children) {
+      if (child.tagName === tag) return child;
+      const match = child.querySelector?.(selector);
+      if (match) return match;
+    }
+    return null;
+  }
   scrollIntoView() {}
 }
 const document = {
@@ -27,7 +36,8 @@ const context = {
   document,
   app: { registerExtension: value => extension = value, graph: { setDirtyCanvas() {} } },
   chooseLora: async () => ({ model: "sub/test.safetensors", cover: "https://example.com/cover.png" }),
-  setTimeout: fn => fn(),
+  onLoraCoverChanged: () => () => {},
+  setTimeout: () => { throw new Error("Workflow restoration must be synchronous"); },
 };
 vm.runInNewContext(fs.readFileSync("web/fast_rh_lora.js", "utf8").replace(/^import .*;\r?\n/gm, ""), context);
 
@@ -67,7 +77,10 @@ function find(root, className) {
   const restored = new Node();
   restored.onNodeCreated();
   restored._fastRhConfigWidget.value = saved;
+  restored.size = [800, 500];
   restored.onConfigure();
+  assert.deepEqual(Array.from(restored.size), [800, 500]);
+  assert.equal(restored._fastRhConfigWidget.value, saved);
   assert.equal(restored._fastRhState[0].model, "sub/test.safetensors");
   assert.equal(find(restored._fastRhDomWidget.element, "fast-rh-stack-icon").disabled, false);
   console.log("LoRA card selection, cover, and workflow restoration: PASS");

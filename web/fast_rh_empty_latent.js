@@ -79,13 +79,15 @@ app.registerExtension({
         if (!pair) return;
         [width.value, height.value] = pair;
       };
-      const updateVisibility = () => {
+      const updateVisibility = (resize = true) => {
         const isPreset = mode.value === "Preset";
         setVisible(preset, isPreset);
         setVisible(width, !isPreset);
         setVisible(height, !isPreset);
-        const computed = this.computeSize();
-        this.setSize([Math.max(this.size?.[0] || 0, 340), computed[1]]);
+        if (resize) {
+          const computed = this.computeSize();
+          this.setSize([Math.max(this.size?.[0] || 0, 340), computed[1]]);
+        }
         app.graph.setDirtyCanvas(true, true);
       };
 
@@ -104,7 +106,7 @@ app.registerExtension({
         }
         app.graph.setDirtyCanvas(true, true);
       });
-      swap.serializeValue = () => undefined;
+      swap.serializeValue = () => null;
 
       state();
       updateVisibility();
@@ -113,14 +115,14 @@ app.registerExtension({
         else if (mode.value === "\u81ea\u5b9a\u4e49") mode.value = "Custom";
         state();
         if (mode.value === "Preset") applyPreset();
-        updateVisibility();
+        updateVisibility(false);
       };
     };
 
     const originalConfigure = nodeType.prototype.onConfigure;
     nodeType.prototype.onConfigure = function () {
       originalConfigure?.apply(this, arguments);
-      setTimeout(() => this._fastRhEmptyLatentRefresh?.(), 0);
+      this._fastRhEmptyLatentRefresh?.();
     };
   },
 });

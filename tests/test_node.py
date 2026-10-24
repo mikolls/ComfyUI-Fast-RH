@@ -1,6 +1,7 @@
 import json
 import unittest
 from types import SimpleNamespace
+import sys
 from unittest.mock import patch
 
 from _bootstrap import load_plugin_package
@@ -65,6 +66,31 @@ class RandomSeedNodeTests(unittest.TestCase):
 
 
 class KSamplerNodeTests(unittest.TestCase):
+    def test_remote_options_available_without_local_comfyui(self):
+        with patch.dict(sys.modules, {"comfy.samplers": None}):
+            required = FastRHKSampler.INPUT_TYPES()["required"]
+        self.assertIn("cfgpp_ud10_ab", required["sampler_name"][0])
+        self.assertIn("uni_pc_bh2", required["sampler_name"][0])
+        self.assertIn("kl_optimal", required["scheduler"][0])
+        self.assertIn("FlowMatchEulerDiscreteScheduler", required["scheduler"][0])
+        self.assertIn("ays_30+", required["scheduler"][0])
+        self.assertIn("logistic", required["scheduler"][0])
+
+    def test_merges_local_extensions_without_duplicates_or_mutation(self):
+        local = SimpleNamespace(SAMPLERS=["euler", "custom_sampler"],
+                                SCHEDULERS=["simple", "custom_scheduler"])
+        with patch.dict(sys.modules, {"comfy": SimpleNamespace(),
+                                     "comfy.samplers": SimpleNamespace(KSampler=local)}):
+            required = FastRHKSampler.INPUT_TYPES()["required"]
+        for field, custom in [("sampler_name", "custom_sampler"),
+                              ("scheduler", "custom_scheduler")]:
+            options = required[field][0]
+            self.assertIn(custom, options)
+            self.assertEqual(len(options), len(set(options)))
+            self.assertIn(required[field][1]["default"], options)
+        self.assertEqual(local.SAMPLERS, ["euler", "custom_sampler"])
+        self.assertEqual(local.SCHEDULERS, ["simple", "custom_scheduler"])
+
     def test_maps_all_remote_ksampler_fields_and_chains(self):
         previous = [{"nodeId": 2, "fieldName": "image", "fieldValue": "uploaded.png"}]
         result = FastRHKSampler().build(

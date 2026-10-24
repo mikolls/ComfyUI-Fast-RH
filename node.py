@@ -129,6 +129,32 @@ class FastRHRandomSeed:
         return (node_info_list,)
 
 
+# Official ComfyUI names: https://github.com/Comfy-Org/ComfyUI/blob/master/comfy/samplers.py
+# These widgets target RunningHub, whose available algorithms can exceed the
+# local ComfyUI installation. Keep a complete baseline and merge local additions.
+RH_SAMPLER_NAMES = (
+    "euler", "euler_cfg_pp", "euler_ancestral", "euler_ancestral_cfg_pp",
+    "heun", "heunpp2", "exp_heun_2_x0", "exp_heun_2_x0_sde", "dpm_2",
+    "dpm_2_ancestral", "lms", "dpm_fast", "dpm_adaptive",
+    "dpmpp_2s_ancestral", "dpmpp_2s_ancestral_cfg_pp", "dpmpp_sde", "dpmpp_sde_gpu",
+    "dpmpp_2m", "dpmpp_2m_cfg_pp", "dpmpp_2m_sde", "dpmpp_2m_sde_gpu",
+    "dpmpp_2m_sde_heun", "dpmpp_2m_sde_heun_gpu", "dpmpp_3m_sde", "dpmpp_3m_sde_gpu",
+    "ddpm", "lcm", "ipndm", "ipndm_v", "deis", "cfgpp_ud10_ab",
+    "res_multistep", "res_multistep_cfg_pp", "res_multistep_ancestral",
+    "res_multistep_ancestral_cfg_pp", "gradient_estimation", "gradient_estimation_cfg_pp",
+    "er_sde", "seeds_2", "seeds_3", "sa_solver", "sa_solver_pece",
+    "ddim", "uni_pc", "uni_pc_bh2",
+)
+RH_SCHEDULER_NAMES = (
+    "simple", "sgm_uniform", "karras", "exponential", "ddim_uniform", "beta",
+    "normal", "linear_quadratic", "kl_optimal",
+    # Extended remote options shown in the RunningHub KSampler dropdown.
+    "capitanZiT", "FlowMatchEulerDiscreteScheduler", "bong_tangent", "beta57",
+    "ays", "ays+", "ays_30", "ays_30+", "gits", "beta_1_1", "power_shift",
+    "atan_gentle", "atan_focused", "atan_steep", "karras_tan", "logistic",
+)
+
+
 class FastRHKSampler:
     """Map KSampler widgets to a remote RunningHub KSampler node."""
 
@@ -138,12 +164,14 @@ class FastRHKSampler:
     def INPUT_TYPES(cls):
         try:
             from comfy.samplers import KSampler as ComfyKSampler
-            samplers = ComfyKSampler.SAMPLERS
-            schedulers = ComfyKSampler.SCHEDULERS
+            local_samplers = ComfyKSampler.SAMPLERS
+            local_schedulers = ComfyKSampler.SCHEDULERS
         except ImportError:
             # Allows the node contract to be tested without a ComfyUI installation.
-            samplers = ("euler_ancestral", "euler", "dpmpp_2m")
-            schedulers = ("simple", "normal", "karras")
+            local_samplers = ()
+            local_schedulers = ()
+        samplers = list(dict.fromkeys((*RH_SAMPLER_NAMES, *local_samplers)))
+        schedulers = list(dict.fromkeys((*RH_SCHEDULER_NAMES, *local_schedulers)))
         return {
             "required": {
                 "nodeId": ("INT", {"default": 0, "min": 0, "max": 999999, "step": 1}),

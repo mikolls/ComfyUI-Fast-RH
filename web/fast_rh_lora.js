@@ -1,5 +1,5 @@
 import { app } from "/scripts/app.js";
-import { chooseLora } from "./model_picker.js";
+import { chooseLora, onLoraCoverChanged } from "./model_picker.js";
 
 const newRow = index => ({
   slot: `lora_${index + 1}`, model: "", model_cover: "", nodeId: 0,
@@ -111,7 +111,7 @@ app.registerExtension({
         if (this._fastRhConfigWidget) this._fastRhConfigWidget.value = JSON.stringify(this._fastRhState);
         app.graph.setDirtyCanvas(true, true);
       };
-      this._fastRhRender = () => {
+      this._fastRhRender = (resize = true) => {
         list.replaceChildren();
         this._fastRhState.forEach((row, index) => {
           const card = document.createElement("div");
@@ -192,7 +192,7 @@ app.registerExtension({
         });
         add.disabled = this._fastRhState.length >= MAX_ROWS;
         const height = Math.max(180, 47 + this._fastRhState.length * 94);
-        this.setSize([Math.max(this.size?.[0] || 0, 680), Math.max(this.size?.[1] || 0, height + 100)]);
+        if (resize) this.setSize([Math.max(this.size?.[0] || 0, 680), Math.max(this.size?.[1] || 0, height + 100)]);
         app.graph.setDirtyCanvas(true, true);
       };
       add.onclick = () => {
@@ -204,18 +204,36 @@ app.registerExtension({
       this._fastRhDomWidget = this.addDOMWidget("LoRA", "fast-rh-stack", root, { serialize: false, hideOnZoom: false, getMinHeight: () => Math.max(180, 47 + this._fastRhState.length * 94), getHeight: () => "100%" });
       this._fastRhSync();
       this._fastRhRender();
+      this._fastRhUnsubscribeCover?.();
+      this._fastRhUnsubscribeCover = onLoraCoverChanged((model, cover) => {
+        let changed = false;
+        for (const row of this._fastRhState) {
+          if (row.model === model && row.model_cover !== cover) {
+            row.model_cover = cover;
+            changed = true;
+          }
+        }
+        if (changed) {
+          this._fastRhSync();
+          this._fastRhRender(false);
+        }
+      });
+    };
+    const originalRemoved = nodeType.prototype.onRemoved;
+    nodeType.prototype.onRemoved = function () {
+      this._fastRhUnsubscribeCover?.();
+      this._fastRhUnsubscribeCover = null;
+      return originalRemoved?.apply(this, arguments);
     };
     const originalConfigure = nodeType.prototype.onConfigure;
     nodeType.prototype.onConfigure = function () {
       originalConfigure?.apply(this, arguments);
-      setTimeout(() => {
-        if (!this._fastRhConfigWidget) return;
-        try {
-          const rows = JSON.parse(this._fastRhConfigWidget.value);
-          if (Array.isArray(rows) && rows.length) this._fastRhState = rows.slice(0, MAX_ROWS);
-        } catch (_) {}
-        this._fastRhRender?.();
-      }, 0);
+      if (!this._fastRhConfigWidget) return;
+      try {
+        const rows = JSON.parse(this._fastRhConfigWidget.value);
+        if (Array.isArray(rows) && rows.length) this._fastRhState = rows.slice(0, MAX_ROWS);
+      } catch (_) {}
+      this._fastRhRender?.(false);
     };
   },
 });

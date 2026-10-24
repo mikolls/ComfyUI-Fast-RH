@@ -8,7 +8,7 @@ const context = {
     registerExtension: value => extension = value,
     graph: { setDirtyCanvas() {} },
   },
-  setTimeout: fn => fn(),
+  setTimeout: () => { throw new Error("Workflow restoration must be synchronous"); },
 };
 vm.runInNewContext(
   fs.readFileSync("web/fast_rh_empty_latent.js", "utf8").replace(/^import .*;\r?\n/gm, ""),
@@ -73,7 +73,17 @@ class Node {
   restored.properties = JSON.parse(JSON.stringify(node.properties));
   restored.widgets.find(w => w.name === "resolution_mode").value = "\u9884\u8bbe";
   restored.widgets.find(w => w.name === "resolution_preset").value = "720 × 1280";
+  restored.size = [480, 350];
   restored.onConfigure();
+  assert.deepEqual(Array.from(restored.size), [480, 350]);
+  const snapshot = () => JSON.stringify({
+    size: restored.size, properties: restored.properties,
+    values: restored.widgets.map(w => w.serializeValue ? w.serializeValue() : w.value),
+  });
+  const before = snapshot();
+  restored.onConfigure();
+  assert.equal(snapshot(), before);
+  assert.equal(swap.serializeValue(), null);
   assert.equal(restored.widgets.find(w => w.name === "resolution_mode").value, "Preset");
   assert.deepEqual([
     restored.widgets.find(w => w.name === "width").value,
